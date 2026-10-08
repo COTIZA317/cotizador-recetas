@@ -3,123 +3,236 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cotizador de Productos con Guardado</title>
+  <title>Cotizador & Módulo de Reportes de Producción</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js para los gráficos del módulo de reportes -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 p-4 md:p-8">
-  <div class="max-w-4xl mx-auto bg-white p-6 rounded-xl shadow-md border border-slate-200">
+  <div class="max-w-5xl mx-auto">
     
-    <!-- Encabezado y Selector de Productos Guardados -->
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-4 border-b gap-4">
-      <h1 class="text-2xl font-bold text-slate-900">Cotizador de Productos</h1>
+    <!-- Navegación por Pestañas (Cotizador vs Reportes) -->
+    <div class="flex border-b border-slate-300 mb-6 bg-white rounded-t-xl overflow-hidden shadow-sm">
+      <button id="tabCotizadorBtn" onclick="cambiarModulo('cotizador')" class="flex-1 py-3 px-4 font-bold text-sm text-blue-600 border-b-2 border-blue-600 bg-slate-50 flex items-center justify-center gap-2">
+        ✏️ Cotizador de Productos
+      </button>
+      <button id="tabReportesBtn" onclick="cambiarModulo('reportes')" class="flex-1 py-3 px-4 font-bold text-sm text-slate-500 hover:text-slate-800 flex items-center justify-center gap-2">
+        📊 Módulo de Reportes y Análisis
+      </button>
+    </div>
+
+    <!-- ==================== MODULO 1: COTIZADOR ==================== -->
+    <div id="moduloCotizador" class="bg-white p-6 rounded-xl shadow-md border border-slate-200">
       
-      <div class="flex items-center gap-2 w-full md:w-auto">
-        <label class="text-xs font-semibold text-slate-600 whitespace-nowrap">Cargar guardado:</label>
-        <select id="selectGuardados" onchange="cargarProducto()" class="border rounded p-1.5 text-xs w-full md:w-48">
-          <option value="">-- Seleccionar --</option>
-        </select>
-      </div>
-    </div>
-
-    <!-- Barra de Acciones (Nuevo / Guardar) -->
-    <div class="flex gap-2 mb-6 bg-slate-50 p-3 rounded-lg border border-slate-200">
-      <button onclick="nuevoProducto()" class="bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded hover:bg-blue-700">
-        + Nuevo Producto
-      </button>
-      <button onclick="guardarProducto()" class="bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded hover:bg-emerald-700">
-        💾 Guardar Producto
-      </button>
-      <button onclick="eliminarProducto()" class="bg-red-600 text-white text-xs font-bold px-4 py-2 rounded hover:bg-red-700 ml-auto">
-        🗑️ Eliminar
-      </button>
-    </div>
-
-    <!-- Datos Básicos -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-      <div>
-        <label class="block text-sm font-semibold mb-1">Nombre del Producto</label>
-        <input type="text" id="productoNombre" value="Nuevo Producto" class="w-full border rounded p-2 text-sm">
-      </div>
-      <div>
-        <label class="block text-sm font-semibold mb-1">Unidades por Lote</label>
-        <input type="number" id="loteUnidades" value="10" min="1" oninput="calcular()" class="w-full border rounded p-2 text-sm">
-      </div>
-    </div>
-
-    <!-- Lista de Insumos -->
-    <div class="mb-6">
-      <h2 class="text-lg font-semibold mb-3 text-slate-700">1. Materia Prima (Receta)</h2>
-      <table class="w-full text-left text-sm mb-3">
-        <thead>
-          <tr class="bg-slate-50 text-slate-600 border-b">
-            <th class="p-2">Insumo</th>
-            <th class="p-2 w-24">Cant.</th>
-            <th class="p-2 w-28">Costo U. ($)</th>
-            <th class="p-2 w-20">% Merma</th>
-            <th class="p-2 text-right">Subtotal</th>
-            <th class="p-2 w-12"></th>
-          </tr>
-        </thead>
-        <tbody id="tablaInsumos"></tbody>
-      </table>
-      <button onclick="agregarInsumo()" class="bg-slate-800 text-white text-xs px-3 py-2 rounded hover:bg-slate-700">+ Agregar Insumo</button>
-    </div>
-
-    <!-- Operaciones y Márgenes -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 pt-4 border-t">
-      <div>
-        <h3 class="font-semibold text-sm mb-2 text-slate-700">2. Mano de Obra</h3>
-        <label class="block text-xs mb-1">Horas de Trabajo</label>
-        <input type="number" id="horasTrabajo" value="1" step="0.1" oninput="calcular()" class="w-full border rounded p-1.5 text-sm mb-2">
-        <label class="block text-xs mb-1">Costo por Hora ($)</label>
-        <input type="number" id="costoHora" value="50" oninput="calcular()" class="w-full border rounded p-1.5 text-sm">
-      </div>
-      <div>
-        <h3 class="font-semibold text-sm mb-2 text-slate-700">3. Indirectos y Empaque</h3>
-        <label class="block text-xs mb-1">Costo Empaque Lote ($)</label>
-        <input type="number" id="costoEmpaque" value="10" oninput="calcular()" class="w-full border rounded p-1.5 text-sm mb-2">
-        <label class="block text-xs mb-1">Costos Indirectos CIF ($)</label>
-        <input type="number" id="costoCIF" value="10" oninput="calcular()" class="w-full border rounded p-1.5 text-sm">
-      </div>
-      <div>
-        <h3 class="font-semibold text-sm mb-2 text-slate-700">4. Comercialización</h3>
-        <label class="block text-xs mb-1">Margen Deseado (%)</label>
-        <input type="number" id="margenDeseado" value="30" oninput="calcular()" class="w-full border rounded p-1.5 text-sm">
-      </div>
-    </div>
-
-    <!-- Resumen de Totales -->
-    <div class="bg-slate-900 text-white p-5 rounded-lg">
-      <h3 class="text-sm font-semibold uppercase text-slate-400 mb-3">Resumen de Cotización</h3>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-        <div>
-          <span class="block text-xs text-slate-400">Costo MP Total</span>
-          <span id="resMP" class="text-lg font-bold">$0.00</span>
-        </div>
-        <div>
-          <span class="block text-xs text-slate-400">Costo Prod. Unitario</span>
-          <span id="resCostoUnit" class="text-lg font-bold text-amber-400">$0.00</span>
-        </div>
-        <div>
-          <span class="block text-xs text-slate-400">Precio Venta Lote</span>
-          <span id="resVentaLote" class="text-lg font-bold">$0.00</span>
-        </div>
-        <div>
-          <span class="block text-xs text-slate-400">Precio Venta Unitario</span>
-          <span id="resVentaUnit" class="text-xl font-bold text-emerald-400">$0.00</span>
+      <!-- Encabezado y Selector de Productos Guardados -->
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-4 border-b gap-4">
+        <h1 class="text-2xl font-bold text-slate-900">Cotizador de Productos</h1>
+        
+        <div class="flex items-center gap-2 w-full md:w-auto">
+          <label class="text-xs font-semibold text-slate-600 whitespace-nowrap">Cargar guardado:</label>
+          <select id="selectGuardados" onchange="cargarProducto()" class="border rounded p-1.5 text-xs w-full md:w-48">
+            <option value="">-- Seleccionar --</option>
+          </select>
         </div>
       </div>
+
+      <!-- Barra de Acciones -->
+      <div class="flex flex-wrap gap-2 mb-6 bg-slate-50 p-3 rounded-lg border border-slate-200">
+        <button onclick="nuevoProducto()" class="bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded hover:bg-blue-700">
+          + Nuevo Producto
+        </button>
+        <button onclick="guardarProducto()" class="bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded hover:bg-emerald-700">
+          💾 Guardar Producto
+        </button>
+        <button onclick="eliminarProducto()" class="bg-red-600 text-white text-xs font-bold px-4 py-2 rounded hover:bg-red-700 ml-auto">
+          🗑️ Eliminar
+        </button>
+      </div>
+
+      <!-- Datos Básicos -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div>
+          <label class="block text-sm font-semibold mb-1">Nombre del Producto</label>
+          <input type="text" id="productoNombre" value="Nuevo Producto" class="w-full border rounded p-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Unidades por Lote</label>
+          <input type="number" id="loteUnidades" value="10" min="1" oninput="calcular()" class="w-full border rounded p-2 text-sm">
+        </div>
+      </div>
+
+      <!-- Lista de Insumos -->
+      <div class="mb-6">
+        <h2 class="text-lg font-semibold mb-3 text-slate-700">1. Materia Prima (Receta)</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm mb-3 min-w-[500px]">
+            <thead>
+              <tr class="bg-slate-50 text-slate-600 border-b">
+                <th class="p-2">Insumo</th>
+                <th class="p-2 w-24">Cant.</th>
+                <th class="p-2 w-28">Costo U. ($)</th>
+                <th class="p-2 w-20">% Merma</th>
+                <th class="p-2 text-right">Subtotal</th>
+                <th class="p-2 w-12"></th>
+              </tr>
+            </thead>
+            <tbody id="tablaInsumos"></tbody>
+          </table>
+        </div>
+        <button onclick="agregarInsumo()" class="bg-slate-800 text-white text-xs px-3 py-2 rounded hover:bg-slate-700">+ Agregar Insumo</button>
+      </div>
+
+      <!-- Operaciones y Márgenes -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 pt-4 border-t">
+        <div>
+          <h3 class="font-semibold text-sm mb-2 text-slate-700">2. Mano de Obra</h3>
+          <label class="block text-xs mb-1">Horas de Trabajo</label>
+          <input type="number" id="horasTrabajo" value="1" step="0.1" oninput="calcular()" class="w-full border rounded p-1.5 text-sm mb-2">
+          <label class="block text-xs mb-1">Costo por Hora ($)</label>
+          <input type="number" id="costoHora" value="50" oninput="calcular()" class="w-full border rounded p-1.5 text-sm">
+        </div>
+        <div>
+          <h3 class="font-semibold text-sm mb-2 text-slate-700">3. Indirectos y Empaque</h3>
+          <label class="block text-xs mb-1">Costo Empaque Lote ($)</label>
+          <input type="number" id="costoEmpaque" value="10" oninput="calcular()" class="w-full border rounded p-1.5 text-sm mb-2">
+          <label class="block text-xs mb-1">Costos Indirectos CIF ($)</label>
+          <input type="number" id="costoCIF" value="10" oninput="calcular()" class="w-full border rounded p-1.5 text-sm">
+        </div>
+        <div>
+          <h3 class="font-semibold text-sm mb-2 text-slate-700">4. Comercialización</h3>
+          <label class="block text-xs mb-1">Margen Deseado (%)</label>
+          <input type="number" id="margenDeseado" value="30" oninput="calcular()" class="w-full border rounded p-1.5 text-sm">
+        </div>
+      </div>
+
+      <!-- Resumen -->
+      <div class="bg-slate-900 text-white p-5 rounded-lg">
+        <h3 class="text-sm font-semibold uppercase text-slate-400 mb-3">Resumen de Cotización</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+          <div>
+            <span class="block text-xs text-slate-400">Costo MP Total</span>
+            <span id="resMP" class="text-lg font-bold">$0.00</span>
+          </div>
+          <div>
+            <span class="block text-xs text-slate-400">Costo Prod. Unitario</span>
+            <span id="resCostoUnit" class="text-lg font-bold text-amber-400">$0.00</span>
+          </div>
+          <div>
+            <span class="block text-xs text-slate-400">Precio Venta Lote</span>
+            <span id="resVentaLote" class="text-lg font-bold">$0.00</span>
+          </div>
+          <div>
+            <span class="block text-xs text-slate-400">Precio Venta Unitario</span>
+            <span id="resVentaUnit" class="text-xl font-bold text-emerald-400">$0.00</span>
+          </div>
+        </div>
+      </div>
     </div>
+
+    <!-- ==================== MODULO 2: REPORTES ==================== -->
+    <div id="moduloReportes" class="bg-white p-6 rounded-xl shadow-md border border-slate-200 hidden">
+      <div class="flex justify-between items-center mb-6 pb-4 border-b">
+        <div>
+          <h1 class="text-2xl font-bold text-slate-900">Análisis y Reporte Global</h1>
+          <p class="text-xs text-slate-500">Métricas acumuladas de todos los productos guardados en catálogo.</p>
+        </div>
+        <button onclick="generarReporte()" class="bg-slate-800 text-white text-xs font-bold px-3 py-2 rounded hover:bg-slate-700">
+          🔄 Actualizar Reporte
+        </button>
+      </div>
+
+      <!-- Tarjetas KPI -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-slate-50 border p-4 rounded-lg">
+          <span class="text-xs font-semibold text-slate-500 uppercase">Productos en Catalogó</span>
+          <span id="kpiTotalProductos" class="block text-2xl font-bold text-slate-800 mt-1">0</span>
+        </div>
+        <div class="bg-blue-50 border border-blue-100 p-4 rounded-lg">
+          <span class="text-xs font-semibold text-blue-600 uppercase">Costo Unitario Promedio</span>
+          <span id="kpiCostoProm" class="block text-2xl font-bold text-blue-900 mt-1">$0.00</span>
+        </div>
+        <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-lg">
+          <span class="text-xs font-semibold text-emerald-600 uppercase">Precio Unitario Promedio</span>
+          <span id="kpiPrecioProm" class="block text-2xl font-bold text-emerald-900 mt-1">$0.00</span>
+        </div>
+        <div class="bg-amber-50 border border-amber-100 p-4 rounded-lg">
+          <span class="text-xs font-semibold text-amber-600 uppercase">Margen Promedio</span>
+          <span id="kpiMargenProm" class="block text-2xl font-bold text-amber-900 mt-1">0%</span>
+        </div>
+      </div>
+
+      <!-- Gráficos -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div class="border p-4 rounded-lg bg-white shadow-sm">
+          <h3 class="text-sm font-bold text-slate-700 mb-4 text-center">Comparativo Costo vs. Precio de Venta (Por Lote)</h3>
+          <div class="h-64">
+            <canvas id="chartComparativo"></canvas>
+          </div>
+        </div>
+        <div class="border p-4 rounded-lg bg-white shadow-sm">
+          <h3 class="text-sm font-bold text-slate-700 mb-4 text-center">Estructura Global de Costos</h3>
+          <div class="h-64 flex justify-center">
+            <canvas id="chartEstructuraCostos"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla Detallada -->
+      <h2 class="text-lg font-bold text-slate-800 mb-3">Detalle de Productos y Rentabilidad</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm border-collapse">
+          <thead>
+            <tr class="bg-slate-100 text-slate-700 border-b">
+              <th class="p-2">Producto</th>
+              <th class="p-2 text-center">Lote</th>
+              <th class="p-2 text-right">Costo Lote</th>
+              <th class="p-2 text-right">Precio Lote</th>
+              <th class="p-2 text-right">Ganancia / Lote</th>
+              <th class="p-2 text-center">Margen %</th>
+            </tr>
+          </thead>
+          <tbody id="tablaReporteDetalle" class="divide-y">
+            <tr>
+              <td colspan="6" class="p-4 text-center text-slate-400">No hay productos guardados para mostrar.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 
   <script>
     let insumos = [];
+    let chartBarInstance = null;
+    let chartPieInstance = null;
 
     // 1. Inicialización
     window.onload = function() {
       actualizarListaGuardados();
       nuevoProducto();
     };
+
+    // Alternar entre pestañas
+    function cambiarModulo(modulo) {
+      const modCotizador = document.getElementById('moduloCotizador');
+      const modReportes = document.getElementById('moduloReportes');
+      const btnCotizador = document.getElementById('tabCotizadorBtn');
+      const btnReportes = document.getElementById('tabReportesBtn');
+
+      if (modulo === 'cotizador') {
+        modCotizador.classList.remove('hidden');
+        modReportes.classList.add('hidden');
+        btnCotizador.className = "flex-1 py-3 px-4 font-bold text-sm text-blue-600 border-b-2 border-blue-600 bg-slate-50 flex items-center justify-center gap-2";
+        btnReportes.className = "flex-1 py-3 px-4 font-bold text-sm text-slate-500 hover:text-slate-800 flex items-center justify-center gap-2";
+      } else {
+        modCotizador.classList.add('hidden');
+        modReportes.classList.remove('hidden');
+        btnReportes.className = "flex-1 py-3 px-4 font-bold text-sm text-blue-600 border-b-2 border-blue-600 bg-slate-50 flex items-center justify-center gap-2";
+        btnCotizador.className = "flex-1 py-3 px-4 font-bold text-sm text-slate-500 hover:text-slate-800 flex items-center justify-center gap-2";
+        generarReporte();
+      }
+    }
 
     // 2. Renderizar tabla de insumos
     function renderInsumos() {
@@ -179,7 +292,7 @@
       document.getElementById('resVentaUnit').innerText = `$${precioVentaUnitario.toFixed(2)}`;
     }
 
-    // 4. Lógica de "Nuevo Producto" (Limpiar formulario)
+    // 4. Funciones de Persistencia (Guardar, Cargar, Nuevo)
     function nuevoProducto() {
       document.getElementById('productoNombre').value = 'Nuevo Producto';
       document.getElementById('loteUnidades').value = 10;
@@ -190,14 +303,10 @@
       document.getElementById('margenDeseado').value = 30;
       document.getElementById('selectGuardados').value = '';
       
-      insumos = [
-        { nombre: 'Insumo 1', cant: 1, costo: 20, merma: 0 }
-      ];
-      
+      insumos = [{ nombre: 'Insumo 1', cant: 1, costo: 20, merma: 0 }];
       renderInsumos();
     }
 
-    // 5. Lógica de "Guardar Producto" en LocalStorage
     function guardarProducto() {
       const nombre = document.getElementById('productoNombre').value.trim();
       if (!nombre) {
@@ -225,7 +334,6 @@
       alert(`¡Producto "${nombre}" guardado con éxito!`);
     }
 
-    // 6. Cargar un Producto de LocalStorage
     function cargarProducto() {
       const nombre = document.getElementById('selectGuardados').value;
       if (!nombre) return;
@@ -247,7 +355,6 @@
       }
     }
 
-    // 7. Eliminar producto guardado
     function eliminarProducto() {
       const nombre = document.getElementById('selectGuardados').value;
       if (!nombre) {
@@ -264,7 +371,6 @@
       }
     }
 
-    // Actualizar el menú desplegable con productos guardados
     function actualizarListaGuardados() {
       const select = document.getElementById('selectGuardados');
       select.innerHTML = '<option value="">-- Seleccionar --</option>';
@@ -272,6 +378,124 @@
       let productosGuardados = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
       Object.keys(productosGuardados).forEach(nombre => {
         select.innerHTML += `<option value="${nombre}">${nombre}</option>`;
+      });
+    }
+
+    // 5. Generador del Módulo de Reportes
+    function generarReporte() {
+      let productos = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
+      const nombres = Object.keys(productos);
+
+      if (nombres.length === 0) {
+        document.getElementById('kpiTotalProductos').innerText = '0';
+        document.getElementById('kpiCostoProm').innerText = '$0.00';
+        document.getElementById('kpiPrecioProm').innerText = '$0.00';
+        document.getElementById('kpiMargenProm').innerText = '0%';
+        document.getElementById('tablaReporteDetalle').innerHTML = `
+          <tr><td colspan="6" class="p-4 text-center text-slate-400">No hay productos guardados para mostrar.</td></tr>
+        `;
+        return;
+      }
+
+      let totalCostoUnit = 0;
+      let totalPrecioUnit = 0;
+      let totalMargenPct = 0;
+
+      let globalMP = 0;
+      let globalMOD = 0;
+      let globalEmpaque = 0;
+      let globalCIF = 0;
+
+      let chartLabels = [];
+      let chartCostos = [];
+      let chartPrecios = [];
+      let tablaHtml = '';
+
+      nombres.forEach(nombre => {
+        const prod = productos[nombre];
+        const costoMP = (prod.insumos || []).reduce((s, i) => s + (i.cant * i.costo * (1 + (i.merma / 100))), 0);
+        const costoMOD = prod.horasTrabajo * prod.costoHora;
+        const costoTotal = costoMP + costoMOD + prod.costoEmpaque + prod.costoCIF;
+        const costoUnit = costoTotal / prod.loteUnidades;
+        
+        const precioLote = costoTotal / (1 - (prod.margenDeseado / 100));
+        const precioUnit = precioLote / prod.loteUnidades;
+        const gananciaLote = precioLote - costoTotal;
+
+        totalCostoUnit += costoUnit;
+        totalPrecioUnit += precioUnit;
+        totalMargenPct += prod.margenDeseado;
+
+        globalMP += costoMP;
+        globalMOD += costoMOD;
+        globalEmpaque += prod.costoEmpaque;
+        globalCIF += prod.costoCIF;
+
+        chartLabels.push(nombre);
+        chartCostos.push(costoTotal.toFixed(2));
+        chartPrecios.push(precioLote.toFixed(2));
+
+        tablaHtml += `
+          <tr class="hover:bg-slate-50">
+            <td class="p-2 font-semibold text-slate-800">${nombre}</td>
+            <td class="p-2 text-center">${prod.loteUnidades} u.</td>
+            <td class="p-2 text-right">$${costoTotal.toFixed(2)}</td>
+            <td class="p-2 text-right">$${precioLote.toFixed(2)}</td>
+            <td class="p-2 text-right font-bold text-emerald-600">+$${gananciaLote.toFixed(2)}</td>
+            <td class="p-2 text-center"><span class="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded font-bold">${prod.margenDeseado}%</span></td>
+          </tr>
+        `;
+      });
+
+      // Actualizar KPIs
+      const count = nombres.length;
+      document.getElementById('kpiTotalProductos').innerText = count;
+      document.getElementById('kpiCostoProm').innerText = `$${(totalCostoUnit / count).toFixed(2)}`;
+      document.getElementById('kpiPrecioProm').innerText = `$${(totalPrecioUnit / count).toFixed(2)}`;
+      document.getElementById('kpiMargenProm').innerText = `${(totalMargenPct / count).toFixed(1)}%`;
+      document.getElementById('tablaReporteDetalle').innerHTML = tablaHtml;
+
+      // Renderizar Gráficos con Chart.js
+      renderGráficos(chartLabels, chartCostos, chartPrecios, [globalMP, globalMOD, globalEmpaque, globalCIF]);
+    }
+
+    function renderGráficos(labels, costos, precios, estructuraCostos) {
+      // Destruir instancias anteriores si existen
+      if (chartBarInstance) chartBarInstance.destroy();
+      if (chartPieInstance) chartPieInstance.destroy();
+
+      // 1. Gráfico de Barras (Costo vs Precio)
+      const ctxBar = document.getElementById('chartComparativo').getContext('2d');
+      chartBarInstance = new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: 'Costo Lote ($)', data: costos, backgroundColor: '#cbd5e1' },
+            { label: 'Precio Venta Lote ($)', data: precios, backgroundColor: '#10b981' }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false
+        }
+      });
+
+      // 2. Gráfico de Dona (Distribución de Costos)
+      const ctxPie = document.getElementById('chartEstructuraCostos').getContext('2d');
+      chartPieInstance = new Chart(ctxPie, {
+        type: 'doughnut',
+        data: {
+          labels: ['Materia Prima', 'Mano de Obra', 'Empaque', 'CIF / Indirectos'],
+          datasets: [{
+            data: estructuraCostos,
+            backgroundColor: ['#3b82f6', '#f59e0b', '#ec4899', '#64748b']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false
+        }
       });
     }
   </script>
