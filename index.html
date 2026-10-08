@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistema de Cotización, Pedidos Multi-Producto & Reportes</title>
+  <title>Sistema de Cotización, Pedidos & Reportes Financieros</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 p-4 md:p-8">
   <div class="max-w-6xl mx-auto">
     
-    <!-- Navegación por Pestañas -->
+    <!-- Navegación por Pestañas Principales -->
     <div class="flex border-b border-slate-300 mb-6 bg-white rounded-t-xl overflow-hidden shadow-sm">
       <button id="tabCotizadorBtn" onclick="cambiarModulo('cotizador')" class="flex-1 py-3 px-4 font-bold text-sm text-blue-600 border-b-2 border-blue-600 bg-slate-50 flex items-center justify-center gap-2">
         ✏️ Cotizador
@@ -19,7 +19,7 @@
         🛒 Pedidos Multi-Producto & TC
       </button>
       <button id="tabReportesBtn" onclick="cambiarModulo('reportes')" class="flex-1 py-3 px-4 font-bold text-sm text-slate-500 hover:text-slate-800 flex items-center justify-center gap-2">
-        📊 Reportes Globales
+        📊 Reportes Financieros
       </button>
     </div>
 
@@ -111,8 +111,6 @@
       <p class="text-xs text-slate-500 mb-6">Agrega varios productos a una misma orden y procesa el cobro consolidado.</p>
 
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        <!-- Formulario e Ítems del Pedido (Columna Izquierda: 7 cols) -->
         <div class="lg:col-span-7 bg-slate-50 p-4 rounded-lg border border-slate-200">
           <h2 class="font-bold text-slate-800 text-sm mb-4 pb-2 border-b">1. Datos del Pedido e Ítems</h2>
           
@@ -127,7 +125,6 @@
             </div>
           </div>
 
-          <!-- Selector para agregar ítems -->
           <div class="bg-white p-3 rounded border border-slate-200 mb-4">
             <span class="block text-xs font-bold text-slate-700 mb-2">➕ Seleccionar Producto del Catálogo</span>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -148,7 +145,6 @@
             </div>
           </div>
 
-          <!-- Tabla de Productos Agregados al Pedido Actual -->
           <h3 class="text-xs font-bold text-slate-700 mb-2">Detalle del Pedido Actual</h3>
           <div class="overflow-x-auto border rounded bg-white mb-4">
             <table class="w-full text-left text-xs">
@@ -167,7 +163,6 @@
             </table>
           </div>
 
-          <!-- Selección de Forma de Pago -->
           <div class="mb-3">
             <label class="block text-xs font-semibold mb-1">Forma de Pago</label>
             <select id="pedidoFormaPago" onchange="toggleFormaPago()" class="w-full border rounded p-2 text-xs font-bold">
@@ -176,7 +171,6 @@
             </select>
           </div>
 
-          <!-- Campos Tarjeta de Crédito -->
           <div id="camposTarjeta" class="space-y-2 mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
             <span class="block text-[11px] font-bold text-blue-800 uppercase">Datos de Tarjeta (Simulación)</span>
             <input type="text" id="tcNumero" placeholder="Número de Tarjeta (16 dígitos)" maxlength="16" class="w-full border rounded p-1.5 text-xs">
@@ -186,7 +180,6 @@
             </div>
           </div>
 
-          <!-- Total Consolidado -->
           <div class="bg-slate-900 text-white p-4 rounded mb-4">
             <div class="flex justify-between text-xs text-slate-400 mb-1">
               <span>Subtotal Productos:</span>
@@ -207,7 +200,6 @@
           </button>
         </div>
 
-        <!-- Tabla Historial de Pedidos (Columna Derecha: 5 cols) -->
         <div class="lg:col-span-5">
           <h2 class="font-bold text-slate-800 text-sm mb-4">2. Historial de Pedidos Guardados</h2>
           <div class="overflow-x-auto border rounded-lg">
@@ -226,66 +218,128 @@
             </table>
           </div>
         </div>
-
       </div>
     </div>
 
-    <!-- ==================== MÓDULO 3: REPORTES ==================== -->
+    <!-- ==================== MÓDULO 3: REPORTES Y ANÁLISIS FINANCIERO ==================== -->
     <div id="moduloReportes" class="bg-white p-6 rounded-xl shadow-md border border-slate-200 hidden">
-      <div class="flex justify-between items-center mb-6 pb-4 border-b">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-4 border-b gap-4">
         <div>
-          <h1 class="text-2xl font-bold text-slate-900">Análisis y Reporte Global</h1>
-          <p class="text-xs text-slate-500">Métricas acumuladas de todos los productos guardados en catálogo.</p>
+          <h1 class="text-2xl font-bold text-slate-900">Análisis y Reportes Financieros</h1>
+          <p class="text-xs text-slate-500">Selecciona el tipo de informe para visualizar métricas clave.</p>
         </div>
-        <button onclick="generarReporte()" class="bg-slate-800 text-white text-xs font-bold px-3 py-2 rounded hover:bg-slate-700">🔄 Actualizar Reporte</button>
-      </div>
-
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div class="bg-slate-50 border p-4 rounded-lg">
-          <span class="text-xs font-semibold text-slate-500 uppercase">Productos en Catálogo</span>
-          <span id="kpiTotalProductos" class="block text-2xl font-bold text-slate-800 mt-1">0</span>
-        </div>
-        <div class="bg-blue-50 border border-blue-100 p-4 rounded-lg">
-          <span class="text-xs font-semibold text-blue-600 uppercase">Costo Unitario Promedio</span>
-          <span id="kpiCostoProm" class="block text-2xl font-bold text-blue-900 mt-1">$0.00</span>
-        </div>
-        <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-lg">
-          <span class="text-xs font-semibold text-emerald-600 uppercase">Precio Unitario Promedio</span>
-          <span id="kpiPrecioProm" class="block text-2xl font-bold text-emerald-900 mt-1">$0.00</span>
-        </div>
-        <div class="bg-amber-50 border border-amber-100 p-4 rounded-lg">
-          <span class="text-xs font-semibold text-amber-600 uppercase">Margen Promedio</span>
-          <span id="kpiMargenProm" class="block text-2xl font-bold text-amber-900 mt-1">0%</span>
+        
+        <!-- Selector de Tipo de Reporte -->
+        <div class="flex bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-bold">
+          <button id="subtabProductosBtn" onclick="cambiarSubtabReporte('productos')" class="px-3 py-1.5 rounded-md bg-white shadow-sm text-blue-600">
+            📦 Reporte de Productos
+          </button>
+          <button id="subtabPedidosBtn" onclick="cambiarSubtabReporte('pedidos')" class="px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900">
+            📑 Reporte de Pedidos (Ventas)
+          </button>
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div class="border p-4 rounded-lg bg-white shadow-sm">
-          <h3 class="text-sm font-bold text-slate-700 mb-4 text-center">Comparativo Costo vs. Precio de Venta</h3>
-          <div class="h-64"><canvas id="chartComparativo"></canvas></div>
+      <!-- VISTA 1: REPORTE DE PRODUCTOS -->
+      <div id="vistaReporteProductos">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div class="bg-slate-50 border p-4 rounded-lg">
+            <span class="text-xs font-semibold text-slate-500 uppercase">Productos en Catálogo</span>
+            <span id="kpiTotalProductos" class="block text-2xl font-bold text-slate-800 mt-1">0</span>
+          </div>
+          <div class="bg-blue-50 border border-blue-100 p-4 rounded-lg">
+            <span class="text-xs font-semibold text-blue-600 uppercase">Costo Unitario Promedio</span>
+            <span id="kpiCostoProm" class="block text-2xl font-bold text-blue-900 mt-1">$0.00</span>
+          </div>
+          <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-lg">
+            <span class="text-xs font-semibold text-emerald-600 uppercase">Precio Unitario Promedio</span>
+            <span id="kpiPrecioProm" class="block text-2xl font-bold text-emerald-900 mt-1">$0.00</span>
+          </div>
+          <div class="bg-amber-50 border border-amber-100 p-4 rounded-lg">
+            <span class="text-xs font-semibold text-amber-600 uppercase">Margen Promedio</span>
+            <span id="kpiMargenProm" class="block text-2xl font-bold text-amber-900 mt-1">0%</span>
+          </div>
         </div>
-        <div class="border p-4 rounded-lg bg-white shadow-sm">
-          <h3 class="text-sm font-bold text-slate-700 mb-4 text-center">Estructura Global de Costos</h3>
-          <div class="h-64 flex justify-center"><canvas id="chartEstructuraCostos"></canvas></div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div class="border p-4 rounded-lg bg-white shadow-sm">
+            <h3 class="text-sm font-bold text-slate-700 mb-4 text-center">Comparativo Costo vs. Precio (Lote)</h3>
+            <div class="h-64"><canvas id="chartComparativo"></canvas></div>
+          </div>
+          <div class="border p-4 rounded-lg bg-white shadow-sm">
+            <h3 class="text-sm font-bold text-slate-700 mb-4 text-center">Estructura Global de Costos</h3>
+            <div class="h-64 flex justify-center"><canvas id="chartEstructuraCostos"></canvas></div>
+          </div>
+        </div>
+
+        <h2 class="text-lg font-bold text-slate-800 mb-3">Catálogo de Productos y Rentabilidad</h2>
+        <div class="overflow-x-auto border rounded-lg">
+          <table class="w-full text-left text-sm border-collapse">
+            <thead>
+              <tr class="bg-slate-100 text-slate-700 border-b">
+                <th class="p-2">Producto</th>
+                <th class="p-2 text-center">Lote</th>
+                <th class="p-2 text-right">Costo Lote</th>
+                <th class="p-2 text-right">Precio Lote</th>
+                <th class="p-2 text-right">Ganancia / Lote</th>
+                <th class="p-2 text-center">Margen %</th>
+              </tr>
+            </thead>
+            <tbody id="tablaReporteProductosDetalle" class="divide-y"></tbody>
+          </table>
         </div>
       </div>
 
-      <h2 class="text-lg font-bold text-slate-800 mb-3">Detalle de Productos y Rentabilidad</h2>
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm border-collapse">
-          <thead>
-            <tr class="bg-slate-100 text-slate-700 border-b">
-              <th class="p-2">Producto</th>
-              <th class="p-2 text-center">Lote</th>
-              <th class="p-2 text-right">Costo Lote</th>
-              <th class="p-2 text-right">Precio Lote</th>
-              <th class="p-2 text-right">Ganancia / Lote</th>
-              <th class="p-2 text-center">Margen %</th>
-            </tr>
-          </thead>
-          <tbody id="tablaReporteDetalle" class="divide-y"></tbody>
-        </table>
+      <!-- VISTA 2: REPORTE DE PEDIDOS Y VENTAS -->
+      <div id="vistaReportePedidos" class="hidden">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div class="bg-slate-50 border p-4 rounded-lg">
+            <span class="text-xs font-semibold text-slate-500 uppercase">Total Pedidos Realizados</span>
+            <span id="kpiTotalPedidosCount" class="block text-2xl font-bold text-slate-800 mt-1">0</span>
+          </div>
+          <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-lg">
+            <span class="text-xs font-semibold text-emerald-600 uppercase">Ventas Totales Cobradas</span>
+            <span id="kpiTotalVentasCobrada" class="block text-2xl font-bold text-emerald-900 mt-1">$0.00</span>
+          </div>
+          <div class="bg-blue-50 border border-blue-100 p-4 rounded-lg">
+            <span class="text-xs font-semibold text-blue-600 uppercase">Cobrado con Tarjeta (TC)</span>
+            <span id="kpiVentasTC" class="block text-2xl font-bold text-blue-900 mt-1">$0.00</span>
+          </div>
+          <div class="bg-purple-50 border border-purple-100 p-4 rounded-lg">
+            <span class="text-xs font-semibold text-purple-600 uppercase">Comisiones TC (3.5%)</span>
+            <span id="kpiComisionesTC" class="block text-2xl font-bold text-purple-900 mt-1">$0.00</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div class="border p-4 rounded-lg bg-white shadow-sm">
+            <h3 class="text-sm font-bold text-slate-700 mb-4 text-center">Ventas Cobradas por Método de Pago</h3>
+            <div class="h-64 flex justify-center"><canvas id="chartMetodosPago"></canvas></div>
+          </div>
+          <div class="border p-4 rounded-lg bg-white shadow-sm">
+            <h3 class="text-sm font-bold text-slate-700 mb-4 text-center">Ingresos por Pedido ($)</h3>
+            <div class="h-64"><canvas id="chartVentasPorPedido"></canvas></div>
+          </div>
+        </div>
+
+        <h2 class="text-lg font-bold text-slate-800 mb-3">Historial Financiero de Pedidos</h2>
+        <div class="overflow-x-auto border rounded-lg">
+          <table class="w-full text-left text-sm border-collapse">
+            <thead>
+              <tr class="bg-slate-100 text-slate-700 border-b">
+                <th class="p-2">Fecha / Código</th>
+                <th class="p-2">Cliente</th>
+                <th class="p-2">Forma de Pago</th>
+                <th class="p-2 text-right">Subtotal</th>
+                <th class="p-2 text-right">Comisión TC</th>
+                <th class="p-2 text-right">Total Cobrado</th>
+              </tr>
+            </thead>
+            <tbody id="tablaReportePedidosDetalle" class="divide-y"></tbody>
+          </table>
+        </div>
       </div>
+
     </div>
 
   </div>
@@ -295,6 +349,8 @@
     let itemsPedidoActual = [];
     let chartBarInstance = null;
     let chartPieInstance = null;
+    let chartMetodosInstance = null;
+    let chartVentasPedInstance = null;
 
     window.onload = function() {
       actualizarListaGuardados();
@@ -324,8 +380,28 @@
       } else {
         document.getElementById('moduloReportes').classList.remove('hidden');
         document.getElementById('tabReportesBtn').className = "flex-1 py-3 px-4 font-bold text-sm text-blue-600 border-b-2 border-blue-600 bg-slate-50 flex items-center justify-center gap-2";
-        generarReporte();
+        generarReportes();
       }
+    }
+
+    function cambiarSubtabReporte(subtab) {
+      const btnProd = document.getElementById('subtabProductosBtn');
+      const btnPed = document.getElementById('subtabPedidosBtn');
+      const vistaProd = document.getElementById('vistaReporteProductos');
+      const vistaPed = document.getElementById('vistaReportePedidos');
+
+      if (subtab === 'productos') {
+        btnProd.className = "px-3 py-1.5 rounded-md bg-white shadow-sm text-blue-600 font-bold";
+        btnPed.className = "px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900 font-bold";
+        vistaProd.classList.remove('hidden');
+        vistaPed.classList.add('hidden');
+      } else {
+        btnPed.className = "px-3 py-1.5 rounded-md bg-white shadow-sm text-blue-600 font-bold";
+        btnProd.className = "px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900 font-bold";
+        vistaPed.classList.remove('hidden');
+        vistaProd.classList.add('hidden');
+      }
+      generarReportes();
     }
 
     // --- COTIZADOR ---
@@ -447,7 +523,7 @@
       Object.keys(productosGuardados).forEach(n => select.innerHTML += `<option value="${n}">${n}</option>`);
     }
 
-    // --- MÓDULO DE PEDIDOS MULTI-PRODUCTO ---
+    // --- PEDIDOS ---
     function generarCodigoPedido() {
       const rand = Math.floor(1000 + Math.random() * 9000);
       document.getElementById('pedidoCodigo').value = `PED-${rand}`;
@@ -484,21 +560,12 @@
       const prodNombre = document.getElementById('pedidoSelectProducto').value;
       const cant = parseInt(document.getElementById('pedidoCantidadItem').value) || 1;
 
-      if (!prodNombre) {
-        alert('Por favor, selecciona un producto del catálogo.');
-        return;
-      }
+      if (!prodNombre) return alert('Selecciona un producto del catálogo.');
 
       const precioLote = calcularPrecioLoteProducto(prodNombre);
       const subtotal = precioLote * cant;
 
-      itemsPedidoActual.push({
-        producto: prodNombre,
-        cantidad: cant,
-        precioLote: precioLote,
-        subtotal: subtotal
-      });
-
+      itemsPedidoActual.push({ producto: prodNombre, cantidad: cant, precioLote: precioLote, subtotal: subtotal });
       renderTablaItemsActuales();
       document.getElementById('pedidoSelectProducto').value = '';
       document.getElementById('pedidoCantidadItem').value = '1';
@@ -532,7 +599,6 @@
           </tr>
         `;
       });
-
       calcularTotalesPedido();
     }
 
@@ -563,32 +629,26 @@
       const cliente = document.getElementById('pedidoCliente').value.trim();
       const formaPago = document.getElementById('pedidoFormaPago').value;
 
-      if (!cliente) {
-        alert('Por favor, ingresa el nombre del cliente.');
-        return;
-      }
-
-      if (itemsPedidoActual.length === 0) {
-        alert('Debes agregar al menos 1 producto al pedido.');
-        return;
-      }
+      if (!cliente) return alert('Ingresa el nombre del cliente.');
+      if (itemsPedidoActual.length === 0) return alert('Agrega al menos 1 producto al pedido.');
 
       if (formaPago === 'Tarjeta de Crédito') {
         const numTc = document.getElementById('tcNumero').value.trim();
-        if (numTc.length < 15) {
-          alert('Por favor, ingresa un número de tarjeta válido (simulación).');
-          return;
-        }
+        if (numTc.length < 15) return alert('Ingresa un número de tarjeta válido.');
       }
 
-      const totalTxt = document.getElementById('pedidoTotal').innerText;
+      const subtotalVal = itemsPedidoActual.reduce((sum, item) => sum + item.subtotal, 0);
+      const comisionVal = (formaPago === 'Tarjeta de Crédito') ? subtotalVal * 0.035 : 0;
+      const totalVal = subtotalVal + comisionVal;
 
       const nuevoPedido = {
         codigo: codigo,
         cliente: cliente,
         items: [...itemsPedidoActual],
         formaPago: formaPago,
-        total: totalTxt,
+        subtotal: subtotalVal,
+        comision: comisionVal,
+        total: totalVal,
         fecha: new Date().toLocaleDateString(),
         estado: 'Pagado'
       };
@@ -597,9 +657,8 @@
       pedidos.unshift(nuevoPedido);
       localStorage.setItem('cotizador_pedidos', JSON.stringify(pedidos));
 
-      alert(`¡Pedido ${codigo} con ${itemsPedidoActual.length} producto(s) procesado con éxito mediante ${formaPago}!`);
+      alert(`¡Pedido ${codigo} procesado con éxito!`);
       
-      // Limpiar formulario y pedido actual
       document.getElementById('pedidoCliente').value = '';
       document.getElementById('tcNumero').value = '';
       document.getElementById('tcExpiracion').value = '';
@@ -630,14 +689,19 @@
               <span class="text-[10px] text-slate-500 block truncate max-w-[180px]">${resumenItems}</span>
             </td>
             <td class="p-2 text-slate-600">${p.formaPago}</td>
-            <td class="p-2 text-right font-bold text-emerald-600">${p.total}</td>
+            <td class="p-2 text-right font-bold text-emerald-600">$${p.total.toFixed(2)}</td>
           </tr>
         `;
       });
     }
 
-    // --- REPORTES ---
-    function generarReporte() {
+    // --- MÓDULO DE REPORTES ---
+    function generarReportes() {
+      generarReporteProductos();
+      generarReportePedidos();
+    }
+
+    function generarReporteProductos() {
       let productos = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
       const nombres = Object.keys(productos);
 
@@ -646,7 +710,7 @@
         document.getElementById('kpiCostoProm').innerText = '$0.00';
         document.getElementById('kpiPrecioProm').innerText = '$0.00';
         document.getElementById('kpiMargenProm').innerText = '0%';
-        document.getElementById('tablaReporteDetalle').innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400">No hay productos guardados.</td></tr>';
+        document.getElementById('tablaReporteProductosDetalle').innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400">No hay productos guardados.</td></tr>';
         return;
       }
 
@@ -692,12 +756,61 @@
       document.getElementById('kpiCostoProm').innerText = `$${(totalCostoUnit / count).toFixed(2)}`;
       document.getElementById('kpiPrecioProm').innerText = `$${(totalPrecioUnit / count).toFixed(2)}`;
       document.getElementById('kpiMargenProm').innerText = `${(totalMargenPct / count).toFixed(1)}%`;
-      document.getElementById('tablaReporteDetalle').innerHTML = tablaHtml;
+      document.getElementById('tablaReporteProductosDetalle').innerHTML = tablaHtml;
 
-      renderGráficos(chartLabels, chartCostos, chartPrecios, [globalMP, globalMOD, globalEmpaque, globalCIF]);
+      renderGráficosProductos(chartLabels, chartCostos, chartPrecios, [globalMP, globalMOD, globalEmpaque, globalCIF]);
     }
 
-    function renderGráficos(labels, costos, precios, estructuraCostos) {
+    function generarReportePedidos() {
+      let pedidos = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
+
+      if (pedidos.length === 0) {
+        document.getElementById('kpiTotalPedidosCount').innerText = '0';
+        document.getElementById('kpiTotalVentasCobrada').innerText = '$0.00';
+        document.getElementById('kpiVentasTC').innerText = '$0.00';
+        document.getElementById('kpiComisionesTC').innerText = '$0.00';
+        document.getElementById('tablaReportePedidosDetalle').innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400">No hay pedidos registrados.</td></tr>';
+        return;
+      }
+
+      let totalVentas = 0, totalTC = 0, totalComisiones = 0, totalEfectivo = 0;
+      let chartPedLabels = [], chartPedTotales = [];
+      let tablaHtml = '';
+
+      pedidos.forEach(p => {
+        totalVentas += p.total;
+        if (p.formaPago === 'Tarjeta de Crédito') {
+          totalTC += p.total;
+          totalComisiones += p.comision;
+        } else {
+          totalEfectivo += p.total;
+        }
+
+        chartPedLabels.push(p.codigo);
+        chartPedTotales.push(p.total.toFixed(2));
+
+        tablaHtml += `
+          <tr class="hover:bg-slate-50">
+            <td class="p-2 font-mono font-bold text-slate-800">${p.fecha} - ${p.codigo}</td>
+            <td class="p-2 font-semibold">${p.cliente}</td>
+            <td class="p-2 text-slate-600">${p.formaPago}</td>
+            <td class="p-2 text-right">$${p.subtotal.toFixed(2)}</td>
+            <td class="p-2 text-right text-purple-600 font-semibold">$${p.comision.toFixed(2)}</td>
+            <td class="p-2 text-right font-bold text-emerald-600">$${p.total.toFixed(2)}</td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('kpiTotalPedidosCount').innerText = pedidos.length;
+      document.getElementById('kpiTotalVentasCobrada').innerText = `$${totalVentas.toFixed(2)}`;
+      document.getElementById('kpiVentasTC').innerText = `$${totalTC.toFixed(2)}`;
+      document.getElementById('kpiComisionesTC').innerText = `$${totalComisiones.toFixed(2)}`;
+      document.getElementById('tablaReportePedidosDetalle').innerHTML = tablaHtml;
+
+      renderGráficosPedidos(chartPedLabels, chartPedTotales, [totalTC, totalEfectivo]);
+    }
+
+    function renderGráficosProductos(labels, costos, precios, estructuraCostos) {
       if (chartBarInstance) chartBarInstance.destroy();
       if (chartPieInstance) chartPieInstance.destroy();
 
@@ -720,6 +833,31 @@
         data: {
           labels: ['Materia Prima', 'Mano de Obra', 'Empaque', 'CIF'],
           datasets: [{ data: estructuraCostos, backgroundColor: ['#3b82f6', '#f59e0b', '#ec4899', '#64748b'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+    function renderGráficosPedidos(pedLabels, pedTotales, metodosData) {
+      if (chartMetodosInstance) chartMetodosInstance.destroy();
+      if (chartVentasPedInstance) chartVentasPedInstance.destroy();
+
+      const ctxMet = document.getElementById('chartMetodosPago').getContext('2d');
+      chartMetodosInstance = new Chart(ctxMet, {
+        type: 'doughnut',
+        data: {
+          labels: ['Tarjeta de Crédito', 'Efectivo / Transf.'],
+          datasets: [{ data: metodosData, backgroundColor: ['#3b82f6', '#10b981'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      const ctxVentas = document.getElementById('chartVentasPorPedido').getContext('2d');
+      chartVentasPedInstance = new Chart(ctxVentas, {
+        type: 'bar',
+        data: {
+          labels: pedLabels,
+          datasets: [{ label: 'Cobro Total ($)', data: pedTotales, backgroundColor: '#8b5cf6' }]
         },
         options: { responsive: true, maintainAspectRatio: false }
       });
