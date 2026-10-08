@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistema de Cotización, Pedidos & Reportes</title>
+  <title>Sistema de Cotización, Pedidos Multi-Producto & Reportes</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 p-4 md:p-8">
-  <div class="max-w-5xl mx-auto">
+  <div class="max-w-6xl mx-auto">
     
     <!-- Navegación por Pestañas -->
     <div class="flex border-b border-slate-300 mb-6 bg-white rounded-t-xl overflow-hidden shadow-sm">
@@ -16,7 +16,7 @@
         ✏️ Cotizador
       </button>
       <button id="tabPedidosBtn" onclick="cambiarModulo('pedidos')" class="flex-1 py-3 px-4 font-bold text-sm text-slate-500 hover:text-slate-800 flex items-center justify-center gap-2">
-        🛒 Pedidos & Cobro TC
+        🛒 Pedidos Multi-Producto & TC
       </button>
       <button id="tabReportesBtn" onclick="cambiarModulo('reportes')" class="flex-1 py-3 px-4 font-bold text-sm text-slate-500 hover:text-slate-800 flex items-center justify-center gap-2">
         📊 Reportes Globales
@@ -105,49 +105,73 @@
       </div>
     </div>
 
-    <!-- ==================== MÓDULO 2: PEDIDOS Y FORMA DE PAGO ==================== -->
+    <!-- ==================== MÓDULO 2: PEDIDOS MULTI-PRODUCTO Y TC ==================== -->
     <div id="moduloPedidos" class="bg-white p-6 rounded-xl shadow-md border border-slate-200 hidden">
-      <h1 class="text-2xl font-bold text-slate-900 mb-2">Gestión de Pedidos y Cobro</h1>
-      <p class="text-xs text-slate-500 mb-6">Genera pedidos a partir de tus productos y procesa pagos con tarjeta de crédito o efectivo.</p>
+      <h1 class="text-2xl font-bold text-slate-900 mb-2">Gestión de Pedidos Multi-Producto</h1>
+      <p class="text-xs text-slate-500 mb-6">Agrega varios productos a una misma orden y procesa el cobro consolidado.</p>
 
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        <!-- Formulario Nuevo Pedido -->
-        <div class="lg:col-span-1 bg-slate-50 p-4 rounded-lg border border-slate-200">
-          <h2 class="font-bold text-slate-800 text-sm mb-4 pb-2 border-b">1. Crear Nuevo Pedido</h2>
+        <!-- Formulario e Ítems del Pedido (Columna Izquierda: 7 cols) -->
+        <div class="lg:col-span-7 bg-slate-50 p-4 rounded-lg border border-slate-200">
+          <h2 class="font-bold text-slate-800 text-sm mb-4 pb-2 border-b">1. Datos del Pedido e Ítems</h2>
           
-          <div class="mb-3">
-            <label class="block text-xs font-semibold mb-1">Código de Pedido</label>
-            <input type="text" id="pedidoCodigo" readonly class="w-full bg-slate-200 border rounded p-2 text-xs font-mono font-bold text-slate-700">
-          </div>
-
-          <div class="mb-3">
-            <label class="block text-xs font-semibold mb-1">Cliente</label>
-            <input type="text" id="pedidoCliente" placeholder="Nombre del cliente" class="w-full border rounded p-2 text-xs">
-          </div>
-
-          <div class="mb-3">
-            <label class="block text-xs font-semibold mb-1">Producto del Catálogo</label>
-            <select id="pedidoSelectProducto" onchange="actualizarPrecioPedido()" class="w-full border rounded p-2 text-xs">
-              <option value="">-- Seleccionar --</option>
-            </select>
-          </div>
-
-          <div class="grid grid-cols-2 gap-2 mb-3">
+          <div class="grid grid-cols-2 gap-3 mb-4">
             <div>
-              <label class="block text-xs font-semibold mb-1">Lotes Pedidos</label>
-              <input type="number" id="pedidoCantidad" value="1" min="1" oninput="actualizarPrecioPedido()" class="w-full border rounded p-2 text-xs">
+              <label class="block text-xs font-semibold mb-1">Código Pedido</label>
+              <input type="text" id="pedidoCodigo" readonly class="w-full bg-slate-200 border rounded p-2 text-xs font-mono font-bold text-slate-700">
             </div>
             <div>
-              <label class="block text-xs font-semibold mb-1">Precio x Lote</label>
-              <input type="text" id="pedidoPrecioUnitario" readonly class="w-full bg-slate-100 border rounded p-2 text-xs font-bold text-slate-700">
+              <label class="block text-xs font-semibold mb-1">Cliente</label>
+              <input type="text" id="pedidoCliente" placeholder="Nombre del cliente" class="w-full border rounded p-2 text-xs">
             </div>
           </div>
 
+          <!-- Selector para agregar ítems -->
+          <div class="bg-white p-3 rounded border border-slate-200 mb-4">
+            <span class="block text-xs font-bold text-slate-700 mb-2">➕ Seleccionar Producto del Catálogo</span>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div class="sm:col-span-2">
+                <select id="pedidoSelectProducto" onchange="mostrarPrecioTemp()" class="w-full border rounded p-2 text-xs">
+                  <option value="">-- Seleccionar --</option>
+                </select>
+              </div>
+              <div>
+                <input type="number" id="pedidoCantidadItem" value="1" min="1" placeholder="Cant. Lotes" class="w-full border rounded p-2 text-xs">
+              </div>
+            </div>
+            <div class="flex justify-between items-center mt-2 pt-2 border-t text-xs">
+              <span id="txtPrecioLoteTemp" class="text-slate-500 font-semibold">Precio Lote: $0.00</span>
+              <button onclick="agregarItemPedido()" class="bg-blue-600 text-white font-bold px-3 py-1.5 rounded hover:bg-blue-700 text-xs">
+                + Agregar al Pedido
+              </button>
+            </div>
+          </div>
+
+          <!-- Tabla de Productos Agregados al Pedido Actual -->
+          <h3 class="text-xs font-bold text-slate-700 mb-2">Detalle del Pedido Actual</h3>
+          <div class="overflow-x-auto border rounded bg-white mb-4">
+            <table class="w-full text-left text-xs">
+              <thead>
+                <tr class="bg-slate-100 text-slate-600 border-b">
+                  <th class="p-2">Producto</th>
+                  <th class="p-2 text-center">Cant. Lotes</th>
+                  <th class="p-2 text-right">Precio Lote</th>
+                  <th class="p-2 text-right">Subtotal</th>
+                  <th class="p-2 w-8"></th>
+                </tr>
+              </thead>
+              <tbody id="tablaItemsPedidoActual" class="divide-y">
+                <tr><td colspan="5" class="p-3 text-center text-slate-400">No has agregado productos al pedido.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Selección de Forma de Pago -->
           <div class="mb-3">
             <label class="block text-xs font-semibold mb-1">Forma de Pago</label>
             <select id="pedidoFormaPago" onchange="toggleFormaPago()" class="w-full border rounded p-2 text-xs font-bold">
-              <option value="Tarjeta de Crédito">💳 Tarjeta de Crédito (+3.5% Com.)</option>
+              <option value="Tarjeta de Crédito">💳 Tarjeta de Crédito (+3.5% Comisión)</option>
               <option value="Efectivo">💵 Efectivo / Transferencia</option>
             </select>
           </div>
@@ -162,44 +186,42 @@
             </div>
           </div>
 
-          <!-- Total Final -->
-          <div class="bg-slate-900 text-white p-3 rounded mb-4">
+          <!-- Total Consolidado -->
+          <div class="bg-slate-900 text-white p-4 rounded mb-4">
             <div class="flex justify-between text-xs text-slate-400 mb-1">
-              <span>Subtotal:</span>
+              <span>Subtotal Productos:</span>
               <span id="pedidoSubtotal">$0.00</span>
             </div>
             <div class="flex justify-between text-xs text-slate-400 mb-1">
-              <span>Comisión TC:</span>
+              <span>Comisión TC (3.5%):</span>
               <span id="pedidoComision">$0.00</span>
             </div>
-            <div class="flex justify-between text-sm font-bold text-emerald-400 border-t border-slate-700 pt-1">
-              <span>Total a Cobrar:</span>
+            <div class="flex justify-between text-sm font-bold text-emerald-400 border-t border-slate-700 pt-2">
+              <span>Total Final a Cobrar:</span>
               <span id="pedidoTotal">$0.00</span>
             </div>
           </div>
 
           <button onclick="procesarPedido()" class="w-full bg-emerald-600 text-white text-xs font-bold py-2.5 rounded hover:bg-emerald-700">
-            🚀 Procesar Cobro & Registrar
+            🚀 Procesar Cobro & Registrar Pedido
           </button>
         </div>
 
-        <!-- Tabla de Pedidos Registrados -->
-        <div class="lg:col-span-2">
-          <h2 class="font-bold text-slate-800 text-sm mb-4">2. Historial de Pedidos</h2>
+        <!-- Tabla Historial de Pedidos (Columna Derecha: 5 cols) -->
+        <div class="lg:col-span-5">
+          <h2 class="font-bold text-slate-800 text-sm mb-4">2. Historial de Pedidos Guardados</h2>
           <div class="overflow-x-auto border rounded-lg">
             <table class="w-full text-left text-xs">
               <thead>
                 <tr class="bg-slate-100 text-slate-700 border-b">
                   <th class="p-2">Código</th>
-                  <th class="p-2">Cliente</th>
-                  <th class="p-2">Producto</th>
+                  <th class="p-2">Cliente / Ítems</th>
                   <th class="p-2">Pago</th>
                   <th class="p-2 text-right">Total</th>
-                  <th class="p-2 text-center">Estado</th>
                 </tr>
               </thead>
               <tbody id="tablaPedidos" class="divide-y">
-                <tr><td colspan="6" class="p-4 text-center text-slate-400">No hay pedidos registrados.</td></tr>
+                <tr><td colspan="4" class="p-4 text-center text-slate-400">No hay pedidos registrados.</td></tr>
               </tbody>
             </table>
           </div>
@@ -270,6 +292,7 @@
 
   <script>
     let insumos = [];
+    let itemsPedidoActual = [];
     let chartBarInstance = null;
     let chartPieInstance = null;
 
@@ -424,7 +447,7 @@
       Object.keys(productosGuardados).forEach(n => select.innerHTML += `<option value="${n}">${n}</option>`);
     }
 
-    // --- MÓDULO DE PEDIDOS Y TC ---
+    // --- MÓDULO DE PEDIDOS MULTI-PRODUCTO ---
     function generarCodigoPedido() {
       const rand = Math.floor(1000 + Math.random() * 9000);
       document.getElementById('pedidoCodigo').value = `PED-${rand}`;
@@ -432,9 +455,85 @@
 
     function cargarSelectorProductosPedido() {
       const select = document.getElementById('pedidoSelectProducto');
-      select.innerHTML = '<option value="">-- Seleccionar --</option>';
+      select.innerHTML = '<option value="">-- Seleccionar Producto --</option>';
       let productos = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
       Object.keys(productos).forEach(n => select.innerHTML += `<option value="${n}">${n}</option>`);
+    }
+
+    function calcularPrecioLoteProducto(prodNombre) {
+      let productos = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
+      const prod = productos[prodNombre];
+      if (!prod) return 0;
+
+      const costoMP = (prod.insumos || []).reduce((s, i) => s + (i.cant * i.costo * (1 + (i.merma / 100))), 0);
+      const costoTotal = costoMP + (prod.horasTrabajo * prod.costoHora) + prod.costoEmpaque + prod.costoCIF;
+      return costoTotal / (1 - (prod.margenDeseado / 100));
+    }
+
+    function mostrarPrecioTemp() {
+      const prodNombre = document.getElementById('pedidoSelectProducto').value;
+      if (!prodNombre) {
+        document.getElementById('txtPrecioLoteTemp').innerText = 'Precio Lote: $0.00';
+        return;
+      }
+      const precioLote = calcularPrecioLoteProducto(prodNombre);
+      document.getElementById('txtPrecioLoteTemp').innerText = `Precio Lote: $${precioLote.toFixed(2)}`;
+    }
+
+    function agregarItemPedido() {
+      const prodNombre = document.getElementById('pedidoSelectProducto').value;
+      const cant = parseInt(document.getElementById('pedidoCantidadItem').value) || 1;
+
+      if (!prodNombre) {
+        alert('Por favor, selecciona un producto del catálogo.');
+        return;
+      }
+
+      const precioLote = calcularPrecioLoteProducto(prodNombre);
+      const subtotal = precioLote * cant;
+
+      itemsPedidoActual.push({
+        producto: prodNombre,
+        cantidad: cant,
+        precioLote: precioLote,
+        subtotal: subtotal
+      });
+
+      renderTablaItemsActuales();
+      document.getElementById('pedidoSelectProducto').value = '';
+      document.getElementById('pedidoCantidadItem').value = '1';
+      document.getElementById('txtPrecioLoteTemp').innerText = 'Precio Lote: $0.00';
+    }
+
+    function eliminarItemPedido(index) {
+      itemsPedidoActual.splice(index, 1);
+      renderTablaItemsActuales();
+    }
+
+    function renderTablaItemsActuales() {
+      const tbody = document.getElementById('tablaItemsPedidoActual');
+      if (itemsPedidoActual.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="p-3 text-center text-slate-400">No has agregado productos al pedido.</td></tr>';
+        calcularTotalesPedido();
+        return;
+      }
+
+      tbody.innerHTML = '';
+      itemsPedidoActual.forEach((item, index) => {
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50">
+            <td class="p-2 font-semibold text-slate-800">${item.producto}</td>
+            <td class="p-2 text-center font-bold">${item.cantidad}</td>
+            <td class="p-2 text-right">$${item.precioLote.toFixed(2)}</td>
+            <td class="p-2 text-right font-bold text-slate-700">$${item.subtotal.toFixed(2)}</td>
+            <td class="p-2 text-center">
+              <button onclick="eliminarItemPedido(${index})" class="text-red-500 font-bold hover:text-red-700">X</button>
+            </td>
+          </tr>
+        `;
+      });
+
+      calcularTotalesPedido();
     }
 
     function toggleFormaPago() {
@@ -445,35 +544,16 @@
       } else {
         camposTC.classList.add('hidden');
       }
-      actualizarPrecioPedido();
+      calcularTotalesPedido();
     }
 
-    function actualizarPrecioPedido() {
-      const prodNombre = document.getElementById('pedidoSelectProducto').value;
-      const cant = parseInt(document.getElementById('pedidoCantidad').value) || 1;
+    function calcularTotalesPedido() {
+      const subtotalGlobal = itemsPedidoActual.reduce((sum, item) => sum + item.subtotal, 0);
       const formaPago = document.getElementById('pedidoFormaPago').value;
+      const comision = (formaPago === 'Tarjeta de Crédito') ? subtotalGlobal * 0.035 : 0;
+      const total = subtotalGlobal + comision;
 
-      if (!prodNombre) {
-        document.getElementById('pedidoPrecioUnitario').value = '$0.00';
-        document.getElementById('pedidoSubtotal').innerText = '$0.00';
-        document.getElementById('pedidoComision').innerText = '$0.00';
-        document.getElementById('pedidoTotal').innerText = '$0.00';
-        return;
-      }
-
-      let productos = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
-      const prod = productos[prodNombre];
-
-      const costoMP = (prod.insumos || []).reduce((s, i) => s + (i.cant * i.costo * (1 + (i.merma / 100))), 0);
-      const costoTotal = costoMP + (prod.horasTrabajo * prod.costoHora) + prod.costoEmpaque + prod.costoCIF;
-      const precioLote = costoTotal / (1 - (prod.margenDeseado / 100));
-
-      const subtotal = precioLote * cant;
-      const comision = (formaPago === 'Tarjeta de Crédito') ? subtotal * 0.035 : 0;
-      const total = subtotal + comision;
-
-      document.getElementById('pedidoPrecioUnitario').value = `$${precioLote.toFixed(2)}`;
-      document.getElementById('pedidoSubtotal').innerText = `$${subtotal.toFixed(2)}`;
+      document.getElementById('pedidoSubtotal').innerText = `$${subtotalGlobal.toFixed(2)}`;
       document.getElementById('pedidoComision').innerText = `$${comision.toFixed(2)}`;
       document.getElementById('pedidoTotal').innerText = `$${total.toFixed(2)}`;
     }
@@ -481,12 +561,15 @@
     function procesarPedido() {
       const codigo = document.getElementById('pedidoCodigo').value;
       const cliente = document.getElementById('pedidoCliente').value.trim();
-      const producto = document.getElementById('pedidoSelectProducto').value;
       const formaPago = document.getElementById('pedidoFormaPago').value;
-      const cant = parseInt(document.getElementById('pedidoCantidad').value) || 1;
 
-      if (!cliente || !producto) {
-        alert('Por favor, ingresa el nombre del cliente y selecciona un producto.');
+      if (!cliente) {
+        alert('Por favor, ingresa el nombre del cliente.');
+        return;
+      }
+
+      if (itemsPedidoActual.length === 0) {
+        alert('Debes agregar al menos 1 producto al pedido.');
         return;
       }
 
@@ -503,8 +586,7 @@
       const nuevoPedido = {
         codigo: codigo,
         cliente: cliente,
-        producto: producto,
-        cantidad: cant,
+        items: [...itemsPedidoActual],
         formaPago: formaPago,
         total: totalTxt,
         fecha: new Date().toLocaleDateString(),
@@ -515,13 +597,15 @@
       pedidos.unshift(nuevoPedido);
       localStorage.setItem('cotizador_pedidos', JSON.stringify(pedidos));
 
-      alert(`¡Pedido ${codigo} procesado y cobrado con éxito mediante ${formaPago}!`);
+      alert(`¡Pedido ${codigo} con ${itemsPedidoActual.length} producto(s) procesado con éxito mediante ${formaPago}!`);
       
-      // Limpiar formulario
+      // Limpiar formulario y pedido actual
       document.getElementById('pedidoCliente').value = '';
       document.getElementById('tcNumero').value = '';
       document.getElementById('tcExpiracion').value = '';
       document.getElementById('tcCvc').value = '';
+      itemsPedidoActual = [];
+      renderTablaItemsActuales();
       generarCodigoPedido();
       renderTablaPedidos();
     }
@@ -531,20 +615,22 @@
       const tbody = document.getElementById('tablaPedidos');
       
       if (pedidos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400">No hay pedidos registrados.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400">No hay pedidos registrados.</td></tr>';
         return;
       }
 
       tbody.innerHTML = '';
       pedidos.forEach(p => {
+        const resumenItems = (p.items || []).map(i => `${i.cantidad}x ${i.producto}`).join(', ');
         tbody.innerHTML += `
           <tr class="hover:bg-slate-50">
             <td class="p-2 font-mono font-bold text-slate-800">${p.codigo}</td>
-            <td class="p-2">${p.cliente}</td>
-            <td class="p-2 font-semibold">${p.producto} (${p.cantidad} Lote)</td>
+            <td class="p-2">
+              <span class="font-semibold block">${p.cliente}</span>
+              <span class="text-[10px] text-slate-500 block truncate max-w-[180px]">${resumenItems}</span>
+            </td>
             <td class="p-2 text-slate-600">${p.formaPago}</td>
             <td class="p-2 text-right font-bold text-emerald-600">${p.total}</td>
-            <td class="p-2 text-center"><span class="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded font-bold">${p.estado}</span></td>
           </tr>
         `;
       });
