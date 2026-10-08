@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cotizador Mínimo de Producción</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 p-4 md:p-8">
+  <div class="max-w-4xl mx-auto bg-white p-6 rounded-xl shadow-md border border-slate-200">
+    <h1 class="text-2xl font-bold text-slate-900 mb-6 pb-2 border-b">Cotizador de Productos por Receta</h1>
+
+    <!-- Datos Básicos -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      <div>
+        <label class="block text-sm font-semibold mb-1">Nombre del Producto</label>
+        <input type="text" id="productoNombre" value="Lote de Galletas Artesanales" class="w-full border rounded p-2 text-sm">
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1">Unidades por Lote</label>
+        <input type="number" id="loteUnidades" value="20" min="1" oninput="calcular()" class="w-full border rounded p-2 text-sm">
+      </div>
+    </div>
+
+    <!-- Lista de Insumos -->
+    <div class="mb-6">
+      <h2 class="text-lg font-semibold mb-3 text-slate-700">1. Materia Prima (Receta)</h2>
+      <table class="w-full text-left text-sm mb-3">
+        <thead>
+          <tr class="bg-slate-50 text-slate-600 border-b">
+            <th class="p-2">Insumo</th>
+            <th class="p-2 w-24">Cant.</th>
+            <th class="p-2 w-28">Costo U. ($)</th>
+            <th class="p-2 w-20">% Merma</th>
+            <th class="p-2 text-right">Subtotal</th>
+            <th class="p-2 w-12"></th>
+          </tr>
+        </thead>
+        <tbody id="tablaInsumos"></tbody>
+      </table>
+      <button onclick="agregarInsumo()" class="bg-slate-800 text-white text-xs px-3 py-2 rounded hover:bg-slate-700">+ Agregar Insumo</button>
+    </div>
+
+    <!-- Operaciones y Márgenes -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 pt-4 border-t">
+      <div>
+        <h3 class="font-semibold text-sm mb-2 text-slate-700">2. Mano de Obra</h3>
+        <label class="block text-xs mb-1">Horas de Trabajo</label>
+        <input type="number" id="horasTrabajo" value="1.5" step="0.1" oninput="calcular()" class="w-full border rounded p-1.5 text-sm mb-2">
+        <label class="block text-xs mb-1">Costo por Hora ($)</label>
+        <input type="number" id="costoHora" value="50" oninput="calcular()" class="w-full border rounded p-1.5 text-sm">
+      </div>
+      <div>
+        <h3 class="font-semibold text-sm mb-2 text-slate-700">3. Indirectos y Empaque</h3>
+        <label class="block text-xs mb-1">Costo Empaque Lote ($)</label>
+        <input type="number" id="costoEmpaque" value="25" oninput="calcular()" class="w-full border rounded p-1.5 text-sm mb-2">
+        <label class="block text-xs mb-1">Costos Indirectos CIF ($)</label>
+        <input type="number" id="costoCIF" value="15" oninput="calcular()" class="w-full border rounded p-1.5 text-sm">
+      </div>
+      <div>
+        <h3 class="font-semibold text-sm mb-2 text-slate-700">4. Comercialización</h3>
+        <label class="block text-xs mb-1">Margen Deseado (%)</label>
+        <input type="number" id="margenDeseado" value="35" oninput="calcular()" class="w-full border rounded p-1.5 text-sm">
+      </div>
+    </div>
+
+    <!-- Resumen -->
+    <div class="bg-slate-900 text-white p-5 rounded-lg">
+      <h3 class="text-sm font-semibold uppercase text-slate-400 mb-3">Resumen de Cotización</h3>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+        <div>
+          <span class="block text-xs text-slate-400">Costo MP Total</span>
+          <span id="resMP" class="text-lg font-bold">$0.00</span>
+        </div>
+        <div>
+          <span class="block text-xs text-slate-400">Costo Prod. Unitario</span>
+          <span id="resCostoUnit" class="text-lg font-bold text-amber-400">$0.00</span>
+        </div>
+        <div>
+          <span class="block text-xs text-slate-400">Precio Venta Lote</span>
+          <span id="resVentaLote" class="text-lg font-bold">$0.00</span>
+        </div>
+        <div>
+          <span class="block text-xs text-slate-400">Precio Venta Unitario</span>
+          <span id="resVentaUnit" class="text-xl font-bold text-emerald-400">$0.00</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let insumos = [
+      { nombre: 'Harina Base', cant: 1.0, costo: 30, merma: 5 },
+      { nombre: 'Mantequilla', cant: 0.25, costo: 120, merma: 0 }
+    ];
+
+    function renderInsumos() {
+      const tbody = document.getElementById('tablaInsumos');
+      tbody.innerHTML = '';
+      insumos.forEach((item, index) => {
+        const subtotal = item.cant * item.costo * (1 + (item.merma / 100));
+        tbody.innerHTML += `
+          <tr class="border-b">
+            <td class="p-1"><input type="text" value="${item.nombre}" onchange="actualizarInsumo(${index}, 'nombre', this.value)" class="w-full border p-1 text-xs rounded"></td>
+            <td class="p-1"><input type="number" value="${item.cant}" step="0.01" onchange="actualizarInsumo(${index}, 'cant', this.value)" class="w-full border p-1 text-xs rounded"></td>
+            <td class="p-1"><input type="number" value="${item.costo}" step="0.1" onchange="actualizarInsumo(${index}, 'costo', this.value)" class="w-full border p-1 text-xs rounded"></td>
+            <td class="p-1"><input type="number" value="${item.merma}" onchange="actualizarInsumo(${index}, 'merma', this.value)" class="w-full border p-1 text-xs rounded"></td>
+            <td class="p-1 text-right font-semibold text-xs">$${subtotal.toFixed(2)}</td>
+            <td class="p-1 text-center"><button onclick="eliminarInsumo(${index})" class="text-red-500 font-bold text-xs">X</button></td>
+          </tr>
+        `;
+      });
+      calcular();
+    }
+
+    function agregarInsumo() {
+      insumos.push({ nombre: 'Nuevo Insumo', cant: 1, costo: 10, merma: 0 });
+      renderInsumos();
+    }
+
+    function eliminarInsumo(index) {
+      insumos.splice(index, 1);
+      renderInsumos();
+    }
+
+    function actualizarInsumo(index, campo, valor) {
+      insumos[index][campo] = campo === 'nombre' ? valor : parseFloat(valor) || 0;
+      renderInsumos();
+    }
+
+    function calcular() {
+      const unidades = parseFloat(document.getElementById('loteUnidades').value) || 1;
+      const horas = parseFloat(document.getElementById('horasTrabajo').value) || 0;
+      const tarifaHora = parseFloat(document.getElementById('costoHora').value) || 0;
+      const empaque = parseFloat(document.getElementById('costoEmpaque').value) || 0;
+      const cif = parseFloat(document.getElementById('costoCIF').value) || 0;
+      const margenPct = parseFloat(document.getElementById('margenDeseado').value) || 0;
+
+      const costoMP = insumos.reduce((sum, item) => sum + (item.cant * item.costo * (1 + (item.merma / 100))), 0);
+      const costoMOD = horas * tarifaHora;
+      const costoTotalFabricacion = costoMP + costoMOD + empaque + cif;
+      const costoUnitarioFabricacion = costoTotalFabricacion / unidades;
+
+      const precioVentaLote = costoTotalFabricacion / (1 - (margenPct / 100));
+      const precioVentaUnitario = precioVentaLote / unidades;
+
+      document.getElementById('resMP').innerText = `$${costoMP.toFixed(2)}`;
+      document.getElementById('resCostoUnit').innerText = `$${costoUnitarioFabricacion.toFixed(2)}`;
+      document.getElementById('resVentaLote').innerText = `$${precioVentaLote.toFixed(2)}`;
+      document.getElementById('resVentaUnit').innerText = `$${precioVentaUnitario.toFixed(2)}`;
+    }
+
+    renderInsumos();
+  </script>
+</body>
+</html>
