@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistema de Cotización, Pedidos & Reportes Financieros</title>
+  <title>Sistema de Cotización, Pedidos Multi-Factura & Reportes</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -11,15 +11,18 @@
   <div class="max-w-6xl mx-auto">
     
     <!-- Navegación por Pestañas Principales -->
-    <div class="flex border-b border-slate-300 mb-6 bg-white rounded-t-xl overflow-hidden shadow-sm">
-      <button id="tabCotizadorBtn" onclick="cambiarModulo('cotizador')" class="flex-1 py-3 px-4 font-bold text-sm text-blue-600 border-b-2 border-blue-600 bg-slate-50 flex items-center justify-center gap-2">
+    <div class="flex border-b border-slate-300 mb-6 bg-white rounded-t-xl overflow-hidden shadow-sm text-xs md:text-sm">
+      <button id="tabCotizadorBtn" onclick="cambiarModulo('cotizador')" class="flex-1 py-3 px-2 font-bold text-blue-600 border-b-2 border-blue-600 bg-slate-50 flex items-center justify-center gap-1">
         ✏️ Cotizador
       </button>
-      <button id="tabPedidosBtn" onclick="cambiarModulo('pedidos')" class="flex-1 py-3 px-4 font-bold text-sm text-slate-500 hover:text-slate-800 flex items-center justify-center gap-2">
-        🛒 Pedidos Multi-Producto & TC
+      <button id="tabPedidosBtn" onclick="cambiarModulo('pedidos')" class="flex-1 py-3 px-2 font-bold text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1">
+        🛒 Pedidos & TC
       </button>
-      <button id="tabReportesBtn" onclick="cambiarModulo('reportes')" class="flex-1 py-3 px-4 font-bold text-sm text-slate-500 hover:text-slate-800 flex items-center justify-center gap-2">
-        📊 Reportes Financieros
+      <button id="tabFacturacionBtn" onclick="cambiarModulo('facturacion')" class="flex-1 py-3 px-2 font-bold text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1">
+        📄 Facturación Multi-Pedido
+      </button>
+      <button id="tabReportesBtn" onclick="cambiarModulo('reportes')" class="flex-1 py-3 px-2 font-bold text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1">
+        📊 Reportes
       </button>
     </div>
 
@@ -105,7 +108,7 @@
       </div>
     </div>
 
-    <!-- ==================== MÓDULO 2: PEDIDOS MULTI-PRODUCTO Y TC ==================== -->
+    <!-- ==================== MÓDULO 2: PEDIDOS Y COBRO ==================== -->
     <div id="moduloPedidos" class="bg-white p-6 rounded-xl shadow-md border border-slate-200 hidden">
       <h1 class="text-2xl font-bold text-slate-900 mb-2">Gestión de Pedidos Multi-Producto</h1>
       <p class="text-xs text-slate-500 mb-6">Agrega varios productos a una misma orden y procesa el cobro consolidado.</p>
@@ -221,647 +224,117 @@
       </div>
     </div>
 
-    <!-- ==================== MÓDULO 3: REPORTES Y ANÁLISIS FINANCIERO ==================== -->
-    <div id="moduloReportes" class="bg-white p-6 rounded-xl shadow-md border border-slate-200 hidden">
-      <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-4 border-b gap-4">
-        <div>
-          <h1 class="text-2xl font-bold text-slate-900">Análisis y Reportes Financieros</h1>
-          <p class="text-xs text-slate-500">Selecciona el tipo de informe para visualizar métricas clave.</p>
-        </div>
+    <!-- ==================== MÓDULO 3: FACTURACIÓN MULTI-PEDIDO ==================== -->
+    <div id="moduloFacturacion" class="bg-white p-6 rounded-xl shadow-md border border-slate-200 hidden">
+      <h1 class="text-2xl font-bold text-slate-900 mb-2">Módulo de Facturación Fiscal Multi-Pedido</h1>
+      <p class="text-xs text-slate-500 mb-6">Selecciona uno o varios pedidos del cliente para emitir una sola factura consolidada.</p>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        <!-- Selector de Tipo de Reporte -->
-        <div class="flex bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-bold">
-          <button id="subtabProductosBtn" onclick="cambiarSubtabReporte('productos')" class="px-3 py-1.5 rounded-md bg-white shadow-sm text-blue-600">
-            📦 Reporte de Productos
+        <!-- Formulario y Selección Múltiple de Pedidos (Columna Izquierda: 5 cols) -->
+        <div class="lg:col-span-5 bg-slate-50 p-4 rounded-lg border border-slate-200">
+          <h2 class="font-bold text-slate-800 text-sm mb-3 pb-2 border-b">1. Seleccionar Pedidos a Facturar</h2>
+          
+          <div class="mb-4">
+            <span class="block text-xs font-semibold mb-2 text-slate-700">Marca los pedidos a consolidar:</span>
+            <div id="listaPedidosFacturables" class="max-h-48 overflow-y-auto border rounded bg-white p-2 space-y-2">
+              <span class="text-xs text-slate-400 block text-center py-2">No hay pedidos disponibles.</span>
+            </div>
+          </div>
+
+          <h2 class="font-bold text-slate-800 text-sm mb-3 pb-2 border-b">2. Datos Fiscales del Receptor</h2>
+
+          <div class="mb-3">
+            <label class="block text-xs font-semibold mb-1">RFC / ID Fiscal</label>
+            <input type="text" id="facturaRfc" placeholder="ej. XAXX010101000" class="w-full border rounded p-2 text-xs uppercase font-mono">
+          </div>
+
+          <div class="mb-3">
+            <label class="block text-xs font-semibold mb-1">Razón Social / Nombre Fiscal</label>
+            <input type="text" id="facturaRazonSocial" placeholder="Nombre completo o Empresa" class="w-full border rounded p-2 text-xs">
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 mb-3">
+            <div>
+              <label class="block text-xs font-semibold mb-1">Uso de CFDI</label>
+              <select id="facturaUso" class="w-full border rounded p-1.5 text-xs">
+                <option value="G03 - Gastos en general">G03 - Gastos general</option>
+                <option value="P01 - Por definir">P01 - Por definir</option>
+                <option value="G01 - Adquisición mercancías">G01 - Mercancías</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold mb-1">Régimen Fiscal</label>
+              <select id="facturaRegimen" class="w-full border rounded p-1.5 text-xs">
+                <option value="601 - General Personas Morales">601 - Morales</option>
+                <option value="612 - Personas Físicas con Actividad">612 - Físicas Act.</option>
+                <option value="626 - RESICO">626 - RESICO</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-xs font-semibold mb-1">Correo Electrónico</label>
+            <input type="email" id="facturaEmail" placeholder="cliente@correo.com" class="w-full border rounded p-2 text-xs">
+          </div>
+
+          <button onclick="generarFacturaVisual()" class="w-full bg-blue-600 text-white text-xs font-bold py-2.5 rounded hover:bg-blue-700">
+            📄 Generar Factura Consolidada
           </button>
-          <button id="subtabPedidosBtn" onclick="cambiarSubtabReporte('pedidos')" class="px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900">
-            📑 Reporte de Pedidos (Ventas)
-          </button>
-        </div>
-      </div>
-
-      <!-- VISTA 1: REPORTE DE PRODUCTOS -->
-      <div id="vistaReporteProductos">
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div class="bg-slate-50 border p-4 rounded-lg">
-            <span class="text-xs font-semibold text-slate-500 uppercase">Productos en Catálogo</span>
-            <span id="kpiTotalProductos" class="block text-2xl font-bold text-slate-800 mt-1">0</span>
-          </div>
-          <div class="bg-blue-50 border border-blue-100 p-4 rounded-lg">
-            <span class="text-xs font-semibold text-blue-600 uppercase">Costo Unitario Promedio</span>
-            <span id="kpiCostoProm" class="block text-2xl font-bold text-blue-900 mt-1">$0.00</span>
-          </div>
-          <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-lg">
-            <span class="text-xs font-semibold text-emerald-600 uppercase">Precio Unitario Promedio</span>
-            <span id="kpiPrecioProm" class="block text-2xl font-bold text-emerald-900 mt-1">$0.00</span>
-          </div>
-          <div class="bg-amber-50 border border-amber-100 p-4 rounded-lg">
-            <span class="text-xs font-semibold text-amber-600 uppercase">Margen Promedio</span>
-            <span id="kpiMargenProm" class="block text-2xl font-bold text-amber-900 mt-1">0%</span>
-          </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div class="border p-4 rounded-lg bg-white shadow-sm">
-            <h3 class="text-sm font-bold text-slate-700 mb-4 text-center">Comparativo Costo vs. Precio (Lote)</h3>
-            <div class="h-64"><canvas id="chartComparativo"></canvas></div>
+        <!-- Vista Previa de la Factura (Columna Derecha: 7 cols) -->
+        <div class="lg:col-span-7">
+          <div class="flex justify-between items-center mb-3">
+            <h2 class="font-bold text-slate-800 text-sm">3. Vista Previa de Factura Consolidada</h2>
+            <button onclick="window.print()" class="bg-slate-800 text-white text-xs px-3 py-1 rounded font-bold hover:bg-slate-700">🖨️ Imprimir / Guardar PDF</button>
           </div>
-          <div class="border p-4 rounded-lg bg-white shadow-sm">
-            <h3 class="text-sm font-bold text-slate-700 mb-4 text-center">Estructura Global de Costos</h3>
-            <div class="h-64 flex justify-center"><canvas id="chartEstructuraCostos"></canvas></div>
-          </div>
-        </div>
 
-        <h2 class="text-lg font-bold text-slate-800 mb-3">Catálogo de Productos y Rentabilidad</h2>
-        <div class="overflow-x-auto border rounded-lg">
-          <table class="w-full text-left text-sm border-collapse">
-            <thead>
-              <tr class="bg-slate-100 text-slate-700 border-b">
-                <th class="p-2">Producto</th>
-                <th class="p-2 text-center">Lote</th>
-                <th class="p-2 text-right">Costo Lote</th>
-                <th class="p-2 text-right">Precio Lote</th>
-                <th class="p-2 text-right">Ganancia / Lote</th>
-                <th class="p-2 text-center">Margen %</th>
-              </tr>
-            </thead>
-            <tbody id="tablaReporteProductosDetalle" class="divide-y"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- VISTA 2: REPORTE DE PEDIDOS Y VENTAS -->
-      <div id="vistaReportePedidos" class="hidden">
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div class="bg-slate-50 border p-4 rounded-lg">
-            <span class="text-xs font-semibold text-slate-500 uppercase">Total Pedidos Realizados</span>
-            <span id="kpiTotalPedidosCount" class="block text-2xl font-bold text-slate-800 mt-1">0</span>
-          </div>
-          <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-lg">
-            <span class="text-xs font-semibold text-emerald-600 uppercase">Ventas Totales Cobradas</span>
-            <span id="kpiTotalVentasCobrada" class="block text-2xl font-bold text-emerald-900 mt-1">$0.00</span>
-          </div>
-          <div class="bg-blue-50 border border-blue-100 p-4 rounded-lg">
-            <span class="text-xs font-semibold text-blue-600 uppercase">Cobrado con Tarjeta (TC)</span>
-            <span id="kpiVentasTC" class="block text-2xl font-bold text-blue-900 mt-1">$0.00</span>
-          </div>
-          <div class="bg-purple-50 border border-purple-100 p-4 rounded-lg">
-            <span class="text-xs font-semibold text-purple-600 uppercase">Comisiones TC (3.5%)</span>
-            <span id="kpiComisionesTC" class="block text-2xl font-bold text-purple-900 mt-1">$0.00</span>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div class="border p-4 rounded-lg bg-white shadow-sm">
-            <h3 class="text-sm font-bold text-slate-700 mb-4 text-center">Ventas Cobradas por Método de Pago</h3>
-            <div class="h-64 flex justify-center"><canvas id="chartMetodosPago"></canvas></div>
-          </div>
-          <div class="border p-4 rounded-lg bg-white shadow-sm">
-            <h3 class="text-sm font-bold text-slate-700 mb-4 text-center">Ingresos por Pedido ($)</h3>
-            <div class="h-64"><canvas id="chartVentasPorPedido"></canvas></div>
-          </div>
-        </div>
-
-        <h2 class="text-lg font-bold text-slate-800 mb-3">Historial Financiero de Pedidos</h2>
-        <div class="overflow-x-auto border rounded-lg">
-          <table class="w-full text-left text-sm border-collapse">
-            <thead>
-              <tr class="bg-slate-100 text-slate-700 border-b">
-                <th class="p-2">Fecha / Código</th>
-                <th class="p-2">Cliente</th>
-                <th class="p-2">Forma de Pago</th>
-                <th class="p-2 text-right">Subtotal</th>
-                <th class="p-2 text-right">Comisión TC</th>
-                <th class="p-2 text-right">Total Cobrado</th>
-              </tr>
-            </thead>
-            <tbody id="tablaReportePedidosDetalle" class="divide-y"></tbody>
-          </table>
-        </div>
-      </div>
-
-    </div>
-
-  </div>
-
-  <script>
-    let insumos = [];
-    let itemsPedidoActual = [];
-    let chartBarInstance = null;
-    let chartPieInstance = null;
-    let chartMetodosInstance = null;
-    let chartVentasPedInstance = null;
-
-    window.onload = function() {
-      actualizarListaGuardados();
-      nuevoProducto();
-      generarCodigoPedido();
-      cargarSelectorProductosPedido();
-      renderTablaPedidos();
-    };
-
-    function cambiarModulo(modulo) {
-      document.getElementById('moduloCotizador').classList.add('hidden');
-      document.getElementById('moduloPedidos').classList.add('hidden');
-      document.getElementById('moduloReportes').classList.add('hidden');
-
-      document.getElementById('tabCotizadorBtn').className = "flex-1 py-3 px-4 font-bold text-sm text-slate-500 hover:text-slate-800 flex items-center justify-center gap-2";
-      document.getElementById('tabPedidosBtn').className = "flex-1 py-3 px-4 font-bold text-sm text-slate-500 hover:text-slate-800 flex items-center justify-center gap-2";
-      document.getElementById('tabReportesBtn').className = "flex-1 py-3 px-4 font-bold text-sm text-slate-500 hover:text-slate-800 flex items-center justify-center gap-2";
-
-      if (modulo === 'cotizador') {
-        document.getElementById('moduloCotizador').classList.remove('hidden');
-        document.getElementById('tabCotizadorBtn').className = "flex-1 py-3 px-4 font-bold text-sm text-blue-600 border-b-2 border-blue-600 bg-slate-50 flex items-center justify-center gap-2";
-      } else if (modulo === 'pedidos') {
-        document.getElementById('moduloPedidos').classList.remove('hidden');
-        document.getElementById('tabPedidosBtn').className = "flex-1 py-3 px-4 font-bold text-sm text-blue-600 border-b-2 border-blue-600 bg-slate-50 flex items-center justify-center gap-2";
-        cargarSelectorProductosPedido();
-        renderTablaPedidos();
-      } else {
-        document.getElementById('moduloReportes').classList.remove('hidden');
-        document.getElementById('tabReportesBtn').className = "flex-1 py-3 px-4 font-bold text-sm text-blue-600 border-b-2 border-blue-600 bg-slate-50 flex items-center justify-center gap-2";
-        generarReportes();
-      }
-    }
-
-    function cambiarSubtabReporte(subtab) {
-      const btnProd = document.getElementById('subtabProductosBtn');
-      const btnPed = document.getElementById('subtabPedidosBtn');
-      const vistaProd = document.getElementById('vistaReporteProductos');
-      const vistaPed = document.getElementById('vistaReportePedidos');
-
-      if (subtab === 'productos') {
-        btnProd.className = "px-3 py-1.5 rounded-md bg-white shadow-sm text-blue-600 font-bold";
-        btnPed.className = "px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900 font-bold";
-        vistaProd.classList.remove('hidden');
-        vistaPed.classList.add('hidden');
-      } else {
-        btnPed.className = "px-3 py-1.5 rounded-md bg-white shadow-sm text-blue-600 font-bold";
-        btnProd.className = "px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900 font-bold";
-        vistaPed.classList.remove('hidden');
-        vistaProd.classList.add('hidden');
-      }
-      generarReportes();
-    }
-
-    // --- COTIZADOR ---
-    function renderInsumos() {
-      const tbody = document.getElementById('tablaInsumos');
-      tbody.innerHTML = '';
-      insumos.forEach((item, index) => {
-        const subtotal = item.cant * item.costo * (1 + (item.merma / 100));
-        tbody.innerHTML += `
-          <tr class="border-b">
-            <td class="p-1"><input type="text" value="${item.nombre}" onchange="actualizarInsumo(${index}, 'nombre', this.value)" class="w-full border p-1 text-xs rounded"></td>
-            <td class="p-1"><input type="number" value="${item.cant}" step="0.01" onchange="actualizarInsumo(${index}, 'cant', this.value)" class="w-full border p-1 text-xs rounded"></td>
-            <td class="p-1"><input type="number" value="${item.costo}" step="0.1" onchange="actualizarInsumo(${index}, 'costo', this.value)" class="w-full border p-1 text-xs rounded"></td>
-            <td class="p-1"><input type="number" value="${item.merma}" onchange="actualizarInsumo(${index}, 'merma', this.value)" class="w-full border p-1 text-xs rounded"></td>
-            <td class="p-1 text-right font-semibold text-xs">$${subtotal.toFixed(2)}</td>
-            <td class="p-1 text-center"><button onclick="eliminarInsumo(${index})" class="text-red-500 font-bold text-xs">X</button></td>
-          </tr>
-        `;
-      });
-      calcular();
-    }
-
-    function agregarInsumo() { insumos.push({ nombre: 'Ingrediente Base', cant: 1, costo: 10, merma: 0 }); renderInsumos(); }
-    function eliminarInsumo(index) { insumos.splice(index, 1); renderInsumos(); }
-    function actualizarInsumo(index, campo, valor) { insumos[index][campo] = campo === 'nombre' ? valor : parseFloat(valor) || 0; renderInsumos(); }
-
-    function calcular() {
-      const unidades = parseFloat(document.getElementById('loteUnidades').value) || 1;
-      const horas = parseFloat(document.getElementById('horasTrabajo').value) || 0;
-      const tarifaHora = parseFloat(document.getElementById('costoHora').value) || 0;
-      const empaque = parseFloat(document.getElementById('costoEmpaque').value) || 0;
-      const cif = parseFloat(document.getElementById('costoCIF').value) || 0;
-      const margenPct = parseFloat(document.getElementById('margenDeseado').value) || 0;
-
-      const costoMP = insumos.reduce((sum, item) => sum + (item.cant * item.costo * (1 + (item.merma / 100))), 0);
-      const costoMOD = horas * tarifaHora;
-      const costoTotalFabricacion = costoMP + costoMOD + empaque + cif;
-      const costoUnitarioFabricacion = costoTotalFabricacion / unidades;
-
-      const precioVentaLote = costoTotalFabricacion / (1 - (margenPct / 100));
-      const precioVentaUnitario = precioVentaLote / unidades;
-
-      document.getElementById('resMP').innerText = `$${costoMP.toFixed(2)}`;
-      document.getElementById('resCostoUnit').innerText = `$${costoUnitarioFabricacion.toFixed(2)}`;
-      document.getElementById('resVentaLote').innerText = `$${precioVentaLote.toFixed(2)}`;
-      document.getElementById('resVentaUnit').innerText = `$${precioVentaUnitario.toFixed(2)}`;
-    }
-
-    function nuevoProducto() {
-      document.getElementById('productoNombre').value = 'Nuevo Producto';
-      document.getElementById('loteUnidades').value = 10;
-      document.getElementById('horasTrabajo').value = 1;
-      document.getElementById('costoHora').value = 50;
-      document.getElementById('costoEmpaque').value = 10;
-      document.getElementById('costoCIF').value = 10;
-      document.getElementById('margenDeseado').value = 30;
-      document.getElementById('selectGuardados').value = '';
-      insumos = [{ nombre: 'Insumo 1', cant: 1, costo: 20, merma: 0 }];
-      renderInsumos();
-    }
-
-    function guardarProducto() {
-      const nombre = document.getElementById('productoNombre').value.trim();
-      if (!nombre) return alert('Ingresa un nombre para el producto.');
-
-      const datosProducto = {
-        nombre: nombre,
-        loteUnidades: parseFloat(document.getElementById('loteUnidades').value) || 1,
-        horasTrabajo: parseFloat(document.getElementById('horasTrabajo').value) || 0,
-        costoHora: parseFloat(document.getElementById('costoHora').value) || 0,
-        costoEmpaque: parseFloat(document.getElementById('costoEmpaque').value) || 0,
-        costoCIF: parseFloat(document.getElementById('costoCIF').value) || 0,
-        margenDeseado: parseFloat(document.getElementById('margenDeseado').value) || 0,
-        insumos: insumos
-      };
-
-      let productosGuardados = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
-      productosGuardados[nombre] = datosProducto;
-      localStorage.setItem('cotizador_productos', JSON.stringify(productosGuardados));
-      actualizarListaGuardados();
-      document.getElementById('selectGuardados').value = nombre;
-      alert(`¡Producto "${nombre}" guardado con éxito!`);
-    }
-
-    function cargarProducto() {
-      const nombre = document.getElementById('selectGuardados').value;
-      if (!nombre) return;
-      let productosGuardados = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
-      const prod = productosGuardados[nombre];
-      if (prod) {
-        document.getElementById('productoNombre').value = prod.nombre;
-        document.getElementById('loteUnidades').value = prod.loteUnidades;
-        document.getElementById('horasTrabajo').value = prod.horasTrabajo;
-        document.getElementById('costoHora').value = prod.costoHora;
-        document.getElementById('costoEmpaque').value = prod.costoEmpaque;
-        document.getElementById('costoCIF').value = prod.costoCIF;
-        document.getElementById('margenDeseado').value = prod.margenDeseado;
-        insumos = prod.insumos || [];
-        renderInsumos();
-      }
-    }
-
-    function eliminarProducto() {
-      const nombre = document.getElementById('selectGuardados').value;
-      if (!nombre) return alert('Selecciona un producto guardado.');
-      if (confirm(`¿Eliminar "${nombre}"?`)) {
-        let productosGuardados = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
-        delete productosGuardados[nombre];
-        localStorage.setItem('cotizador_productos', JSON.stringify(productosGuardados));
-        actualizarListaGuardados();
-        nuevoProducto();
-      }
-    }
-
-    function actualizarListaGuardados() {
-      const select = document.getElementById('selectGuardados');
-      select.innerHTML = '<option value="">-- Seleccionar --</option>';
-      let productosGuardados = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
-      Object.keys(productosGuardados).forEach(n => select.innerHTML += `<option value="${n}">${n}</option>`);
-    }
-
-    // --- PEDIDOS ---
-    function generarCodigoPedido() {
-      const rand = Math.floor(1000 + Math.random() * 9000);
-      document.getElementById('pedidoCodigo').value = `PED-${rand}`;
-    }
-
-    function cargarSelectorProductosPedido() {
-      const select = document.getElementById('pedidoSelectProducto');
-      select.innerHTML = '<option value="">-- Seleccionar Producto --</option>';
-      let productos = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
-      Object.keys(productos).forEach(n => select.innerHTML += `<option value="${n}">${n}</option>`);
-    }
-
-    function calcularPrecioLoteProducto(prodNombre) {
-      let productos = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
-      const prod = productos[prodNombre];
-      if (!prod) return 0;
-
-      const costoMP = (prod.insumos || []).reduce((s, i) => s + (i.cant * i.costo * (1 + (i.merma / 100))), 0);
-      const costoTotal = costoMP + (prod.horasTrabajo * prod.costoHora) + prod.costoEmpaque + prod.costoCIF;
-      return costoTotal / (1 - (prod.margenDeseado / 100));
-    }
-
-    function mostrarPrecioTemp() {
-      const prodNombre = document.getElementById('pedidoSelectProducto').value;
-      if (!prodNombre) {
-        document.getElementById('txtPrecioLoteTemp').innerText = 'Precio Lote: $0.00';
-        return;
-      }
-      const precioLote = calcularPrecioLoteProducto(prodNombre);
-      document.getElementById('txtPrecioLoteTemp').innerText = `Precio Lote: $${precioLote.toFixed(2)}`;
-    }
-
-    function agregarItemPedido() {
-      const prodNombre = document.getElementById('pedidoSelectProducto').value;
-      const cant = parseInt(document.getElementById('pedidoCantidadItem').value) || 1;
-
-      if (!prodNombre) return alert('Selecciona un producto del catálogo.');
-
-      const precioLote = calcularPrecioLoteProducto(prodNombre);
-      const subtotal = precioLote * cant;
-
-      itemsPedidoActual.push({ producto: prodNombre, cantidad: cant, precioLote: precioLote, subtotal: subtotal });
-      renderTablaItemsActuales();
-      document.getElementById('pedidoSelectProducto').value = '';
-      document.getElementById('pedidoCantidadItem').value = '1';
-      document.getElementById('txtPrecioLoteTemp').innerText = 'Precio Lote: $0.00';
-    }
-
-    function eliminarItemPedido(index) {
-      itemsPedidoActual.splice(index, 1);
-      renderTablaItemsActuales();
-    }
-
-    function renderTablaItemsActuales() {
-      const tbody = document.getElementById('tablaItemsPedidoActual');
-      if (itemsPedidoActual.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="p-3 text-center text-slate-400">No has agregado productos al pedido.</td></tr>';
-        calcularTotalesPedido();
-        return;
-      }
-
-      tbody.innerHTML = '';
-      itemsPedidoActual.forEach((item, index) => {
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-50">
-            <td class="p-2 font-semibold text-slate-800">${item.producto}</td>
-            <td class="p-2 text-center font-bold">${item.cantidad}</td>
-            <td class="p-2 text-right">$${item.precioLote.toFixed(2)}</td>
-            <td class="p-2 text-right font-bold text-slate-700">$${item.subtotal.toFixed(2)}</td>
-            <td class="p-2 text-center">
-              <button onclick="eliminarItemPedido(${index})" class="text-red-500 font-bold hover:text-red-700">X</button>
-            </td>
-          </tr>
-        `;
-      });
-      calcularTotalesPedido();
-    }
-
-    function toggleFormaPago() {
-      const forma = document.getElementById('pedidoFormaPago').value;
-      const camposTC = document.getElementById('camposTarjeta');
-      if (forma === 'Tarjeta de Crédito') {
-        camposTC.classList.remove('hidden');
-      } else {
-        camposTC.classList.add('hidden');
-      }
-      calcularTotalesPedido();
-    }
-
-    function calcularTotalesPedido() {
-      const subtotalGlobal = itemsPedidoActual.reduce((sum, item) => sum + item.subtotal, 0);
-      const formaPago = document.getElementById('pedidoFormaPago').value;
-      const comision = (formaPago === 'Tarjeta de Crédito') ? subtotalGlobal * 0.035 : 0;
-      const total = subtotalGlobal + comision;
-
-      document.getElementById('pedidoSubtotal').innerText = `$${subtotalGlobal.toFixed(2)}`;
-      document.getElementById('pedidoComision').innerText = `$${comision.toFixed(2)}`;
-      document.getElementById('pedidoTotal').innerText = `$${total.toFixed(2)}`;
-    }
-
-    function procesarPedido() {
-      const codigo = document.getElementById('pedidoCodigo').value;
-      const cliente = document.getElementById('pedidoCliente').value.trim();
-      const formaPago = document.getElementById('pedidoFormaPago').value;
-
-      if (!cliente) return alert('Ingresa el nombre del cliente.');
-      if (itemsPedidoActual.length === 0) return alert('Agrega al menos 1 producto al pedido.');
-
-      if (formaPago === 'Tarjeta de Crédito') {
-        const numTc = document.getElementById('tcNumero').value.trim();
-        if (numTc.length < 15) return alert('Ingresa un número de tarjeta válido.');
-      }
-
-      const subtotalVal = itemsPedidoActual.reduce((sum, item) => sum + item.subtotal, 0);
-      const comisionVal = (formaPago === 'Tarjeta de Crédito') ? subtotalVal * 0.035 : 0;
-      const totalVal = subtotalVal + comisionVal;
-
-      const nuevoPedido = {
-        codigo: codigo,
-        cliente: cliente,
-        items: [...itemsPedidoActual],
-        formaPago: formaPago,
-        subtotal: subtotalVal,
-        comision: comisionVal,
-        total: totalVal,
-        fecha: new Date().toLocaleDateString(),
-        estado: 'Pagado'
-      };
-
-      let pedidos = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
-      pedidos.unshift(nuevoPedido);
-      localStorage.setItem('cotizador_pedidos', JSON.stringify(pedidos));
-
-      alert(`¡Pedido ${codigo} procesado con éxito!`);
-      
-      document.getElementById('pedidoCliente').value = '';
-      document.getElementById('tcNumero').value = '';
-      document.getElementById('tcExpiracion').value = '';
-      document.getElementById('tcCvc').value = '';
-      itemsPedidoActual = [];
-      renderTablaItemsActuales();
-      generarCodigoPedido();
-      renderTablaPedidos();
-    }
-
-    function renderTablaPedidos() {
-      let pedidos = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
-      const tbody = document.getElementById('tablaPedidos');
-      
-      if (pedidos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400">No hay pedidos registrados.</td></tr>';
-        return;
-      }
-
-      tbody.innerHTML = '';
-      pedidos.forEach(p => {
-        const resumenItems = (p.items || []).map(i => `${i.cantidad}x ${i.producto}`).join(', ');
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-50">
-            <td class="p-2 font-mono font-bold text-slate-800">${p.codigo}</td>
-            <td class="p-2">
-              <span class="font-semibold block">${p.cliente}</span>
-              <span class="text-[10px] text-slate-500 block truncate max-w-[180px]">${resumenItems}</span>
-            </td>
-            <td class="p-2 text-slate-600">${p.formaPago}</td>
-            <td class="p-2 text-right font-bold text-emerald-600">$${p.total.toFixed(2)}</td>
-          </tr>
-        `;
-      });
-    }
-
-    // --- MÓDULO DE REPORTES ---
-    function generarReportes() {
-      generarReporteProductos();
-      generarReportePedidos();
-    }
-
-    function generarReporteProductos() {
-      let productos = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
-      const nombres = Object.keys(productos);
-
-      if (nombres.length === 0) {
-        document.getElementById('kpiTotalProductos').innerText = '0';
-        document.getElementById('kpiCostoProm').innerText = '$0.00';
-        document.getElementById('kpiPrecioProm').innerText = '$0.00';
-        document.getElementById('kpiMargenProm').innerText = '0%';
-        document.getElementById('tablaReporteProductosDetalle').innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400">No hay productos guardados.</td></tr>';
-        return;
-      }
-
-      let totalCostoUnit = 0, totalPrecioUnit = 0, totalMargenPct = 0;
-      let globalMP = 0, globalMOD = 0, globalEmpaque = 0, globalCIF = 0;
-      let chartLabels = [], chartCostos = [], chartPrecios = [], tablaHtml = '';
-
-      nombres.forEach(nombre => {
-        const prod = productos[nombre];
-        const costoMP = (prod.insumos || []).reduce((s, i) => s + (i.cant * i.costo * (1 + (i.merma / 100))), 0);
-        const costoMOD = prod.horasTrabajo * prod.costoHora;
-        const costoTotal = costoMP + costoMOD + prod.costoEmpaque + prod.costoCIF;
-        const costoUnit = costoTotal / prod.loteUnidades;
-        
-        const precioLote = costoTotal / (1 - (prod.margenDeseado / 100));
-        const precioUnit = precioLote / prod.loteUnidades;
-        const gananciaLote = precioLote - costoTotal;
-
-        totalCostoUnit += costoUnit;
-        totalPrecioUnit += precioUnit;
-        totalMargenPct += prod.margenDeseado;
-
-        globalMP += costoMP; globalMOD += costoMOD; globalEmpaque += prod.costoEmpaque; globalCIF += prod.costoCIF;
-
-        chartLabels.push(nombre);
-        chartCostos.push(costoTotal.toFixed(2));
-        chartPrecios.push(precioLote.toFixed(2));
-
-        tablaHtml += `
-          <tr class="hover:bg-slate-50">
-            <td class="p-2 font-semibold text-slate-800">${nombre}</td>
-            <td class="p-2 text-center">${prod.loteUnidades} u.</td>
-            <td class="p-2 text-right">$${costoTotal.toFixed(2)}</td>
-            <td class="p-2 text-right">$${precioLote.toFixed(2)}</td>
-            <td class="p-2 text-right font-bold text-emerald-600">+$${gananciaLote.toFixed(2)}</td>
-            <td class="p-2 text-center"><span class="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded font-bold">${prod.margenDeseado}%</span></td>
-          </tr>
-        `;
-      });
-
-      const count = nombres.length;
-      document.getElementById('kpiTotalProductos').innerText = count;
-      document.getElementById('kpiCostoProm').innerText = `$${(totalCostoUnit / count).toFixed(2)}`;
-      document.getElementById('kpiPrecioProm').innerText = `$${(totalPrecioUnit / count).toFixed(2)}`;
-      document.getElementById('kpiMargenProm').innerText = `${(totalMargenPct / count).toFixed(1)}%`;
-      document.getElementById('tablaReporteProductosDetalle').innerHTML = tablaHtml;
-
-      renderGráficosProductos(chartLabels, chartCostos, chartPrecios, [globalMP, globalMOD, globalEmpaque, globalCIF]);
-    }
-
-    function generarReportePedidos() {
-      let pedidos = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
-
-      if (pedidos.length === 0) {
-        document.getElementById('kpiTotalPedidosCount').innerText = '0';
-        document.getElementById('kpiTotalVentasCobrada').innerText = '$0.00';
-        document.getElementById('kpiVentasTC').innerText = '$0.00';
-        document.getElementById('kpiComisionesTC').innerText = '$0.00';
-        document.getElementById('tablaReportePedidosDetalle').innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400">No hay pedidos registrados.</td></tr>';
-        return;
-      }
-
-      let totalVentas = 0, totalTC = 0, totalComisiones = 0, totalEfectivo = 0;
-      let chartPedLabels = [], chartPedTotales = [];
-      let tablaHtml = '';
-
-      pedidos.forEach(p => {
-        totalVentas += p.total;
-        if (p.formaPago === 'Tarjeta de Crédito') {
-          totalTC += p.total;
-          totalComisiones += p.comision;
-        } else {
-          totalEfectivo += p.total;
-        }
-
-        chartPedLabels.push(p.codigo);
-        chartPedTotales.push(p.total.toFixed(2));
-
-        tablaHtml += `
-          <tr class="hover:bg-slate-50">
-            <td class="p-2 font-mono font-bold text-slate-800">${p.fecha} - ${p.codigo}</td>
-            <td class="p-2 font-semibold">${p.cliente}</td>
-            <td class="p-2 text-slate-600">${p.formaPago}</td>
-            <td class="p-2 text-right">$${p.subtotal.toFixed(2)}</td>
-            <td class="p-2 text-right text-purple-600 font-semibold">$${p.comision.toFixed(2)}</td>
-            <td class="p-2 text-right font-bold text-emerald-600">$${p.total.toFixed(2)}</td>
-          </tr>
-        `;
-      });
-
-      document.getElementById('kpiTotalPedidosCount').innerText = pedidos.length;
-      document.getElementById('kpiTotalVentasCobrada').innerText = `$${totalVentas.toFixed(2)}`;
-      document.getElementById('kpiVentasTC').innerText = `$${totalTC.toFixed(2)}`;
-      document.getElementById('kpiComisionesTC').innerText = `$${totalComisiones.toFixed(2)}`;
-      document.getElementById('tablaReportePedidosDetalle').innerHTML = tablaHtml;
-
-      renderGráficosPedidos(chartPedLabels, chartPedTotales, [totalTC, totalEfectivo]);
-    }
-
-    function renderGráficosProductos(labels, costos, precios, estructuraCostos) {
-      if (chartBarInstance) chartBarInstance.destroy();
-      if (chartPieInstance) chartPieInstance.destroy();
-
-      const ctxBar = document.getElementById('chartComparativo').getContext('2d');
-      chartBarInstance = new Chart(ctxBar, {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [
-            { label: 'Costo Lote ($)', data: costos, backgroundColor: '#cbd5e1' },
-            { label: 'Precio Venta ($)', data: precios, backgroundColor: '#10b981' }
-          ]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
-
-      const ctxPie = document.getElementById('chartEstructuraCostos').getContext('2d');
-      chartPieInstance = new Chart(ctxPie, {
-        type: 'doughnut',
-        data: {
-          labels: ['Materia Prima', 'Mano de Obra', 'Empaque', 'CIF'],
-          datasets: [{ data: estructuraCostos, backgroundColor: ['#3b82f6', '#f59e0b', '#ec4899', '#64748b'] }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
-    }
-
-    function renderGráficosPedidos(pedLabels, pedTotales, metodosData) {
-      if (chartMetodosInstance) chartMetodosInstance.destroy();
-      if (chartVentasPedInstance) chartVentasPedInstance.destroy();
-
-      const ctxMet = document.getElementById('chartMetodosPago').getContext('2d');
-      chartMetodosInstance = new Chart(ctxMet, {
-        type: 'doughnut',
-        data: {
-          labels: ['Tarjeta de Crédito', 'Efectivo / Transf.'],
-          datasets: [{ data: metodosData, backgroundColor: ['#3b82f6', '#10b981'] }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
-
-      const ctxVentas = document.getElementById('chartVentasPorPedido').getContext('2d');
-      chartVentasPedInstance = new Chart(ctxVentas, {
-        type: 'bar',
-        data: {
-          labels: pedLabels,
-          datasets: [{ label: 'Cobro Total ($)', data: pedTotales, backgroundColor: '#8b5cf6' }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
-    }
-  </script>
-</body>
-</html>
+          <!-- Documento de Factura -->
+          <div id="vistaFacturaDocumento" class="border border-slate-300 p-6 rounded-lg bg-white shadow-sm text-xs space-y-4">
+            <div class="flex justify-between border-b pb-4">
+              <div>
+                <h3 class="font-bold text-base text-slate-900">FACTURA ELECTRONICA CONSOLIDADA</h3>
+                <span class="text-slate-500 font-mono block" id="facFolio">FOLIO: FAC-MULT-001</span>
+                <span class="text-[11px] text-blue-700 font-bold block mt-1" id="facPedidosIncluidos">Pedidos Incluidos: Ninguno</span>
+              </div>
+              <div class="text-right">
+                <span class="font-bold text-slate-800 block">EMISOR EJEMPLO S.A. DE C.V.</span>
+                <span class="text-slate-500 block">RFC: EME120304XXX</span>
+                <span class="text-slate-500 block" id="facFecha">Fecha: DD/MM/AAAA</span>
+              </div>
+            </div>
+
+            <!-- Datos Receptor -->
+            <div class="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded border">
+              <div>
+                <span class="block text-[10px] text-slate-400 font-bold uppercase">Receptor (Cliente)</span>
+                <span id="facReceptorNombre" class="font-bold text-slate-800 block">SELECCIONA PEDIDOS</span>
+                <span id="facReceptorRfc" class="font-mono text-slate-600 block">RFC: -</span>
+              </div>
+              <div>
+                <span class="block text-[10px] text-slate-400 font-bold uppercase">Detalles Fiscales</span>
+                <span id="facReceptorUso" class="block text-slate-600">Uso: -</span>
+                <span id="facReceptorRegimen" class="block text-slate-600">Régimen: -</span>
+              </div>
+            </div>
+
+            <!-- Tabla de Conceptos Consolidados -->
+            <div>
+              <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr class="border-b bg-slate-100 text-slate-700">
+                    <th class="p-2">Pedido</th>
+                    <th class="p-2">Concepto / Producto</th>
+                    <th class="p-2 text-center">Cant.</th>
+                    <th class="p-2 text-right">P. Unitario</th>
+                    <th class="p-2 text-right">Importe</th>
+                  </tr>
+                </thead>
+                <tbody id="facTablaConceptos" class="divide-y">
+                  <tr><td colspan="5" class="p-4 text-center text-slate-400">Selecciona al menos un pedido para mostrar los conceptos.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Tot
