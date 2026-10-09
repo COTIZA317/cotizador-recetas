@@ -71,7 +71,7 @@
               </tr>
             </thead>
             <tbody id="tablaInsumos">
-              <!-- Renderizado automático de insumos -->
+              <!-- Renderizado automático -->
             </tbody>
           </table>
         </div>
@@ -288,7 +288,7 @@
             </button>
           </div>
 
-          <!-- SECCIÓN: HISTORIAL DE FACTURAS GUARDADAS -->
+          <!-- HISTORIAL DE FACTURAS -->
           <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
             <div class="flex justify-between items-center mb-3 pb-2 border-b">
               <h2 class="font-bold text-slate-800 text-sm">📋 Facturas Emitidas (Historial)</h2>
@@ -536,8 +536,11 @@
   </div>
 
   <script>
+    // ESTADO GLOBAL DE APLICACIÓN
     let insumos = [];
     let itemsPedidoActual = [];
+
+    // Instancias de gráficos
     let chartBarInstance = null;
     let chartPieInstance = null;
     let chartMetodosInstance = null;
@@ -556,15 +559,13 @@
     };
 
     function cambiarModulo(modulo) {
-      document.getElementById('moduloCotizador').classList.add('hidden');
-      document.getElementById('moduloPedidos').classList.add('hidden');
-      document.getElementById('moduloFacturacion').classList.add('hidden');
-      document.getElementById('moduloReportes').classList.add('hidden');
+      const modulos = ['moduloCotizador', 'moduloPedidos', 'moduloFacturacion', 'moduloReportes'];
+      const botones = ['tabCotizadorBtn', 'tabPedidosBtn', 'tabFacturacionBtn', 'tabReportesBtn'];
 
-      document.getElementById('tabCotizadorBtn').className = "flex-1 py-3 px-2 font-bold text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1";
-      document.getElementById('tabPedidosBtn').className = "flex-1 py-3 px-2 font-bold text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1";
-      document.getElementById('tabFacturacionBtn').className = "flex-1 py-3 px-2 font-bold text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1";
-      document.getElementById('tabReportesBtn').className = "flex-1 py-3 px-2 font-bold text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1";
+      modulos.forEach(id => document.getElementById(id).classList.add('hidden'));
+      botones.forEach(id => {
+        document.getElementById(id).className = "flex-1 py-3 px-2 font-bold text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1";
+      });
 
       if (modulo === 'cotizador') {
         document.getElementById('moduloCotizador').classList.remove('hidden');
@@ -616,7 +617,7 @@
       generarReportes();
     }
 
-    // --- RENDERIZADO DEFENSIVO DE INSUMOS ---
+    // --- MÓDULO COTIZADOR DE PRODUCTOS ---
     function renderInsumos() {
       const tbody = document.getElementById('tablaInsumos');
       if (!tbody) return;
@@ -627,15 +628,181 @@
       }
 
       insumos.forEach((item, index) => {
-        const cant = parseFloat(item.cant) || 0;
-        const costo = parseFloat(item.costo) || 0;
-        const merma = parseFloat(item.merma) || 0;
+        const cant = Number(item.cant) || 0;
+        const costo = Number(item.costo) || 0;
+        const merma = Number(item.merma) || 0;
         const subtotal = cant * costo * (1 + (merma / 100));
 
         tbody.innerHTML += `
           <tr class="border-b">
-            <td class="p-1"><input type="text" value="${item.nombre \vert{}\vert{} ''}" onchange="actualizarInsumo(${index}, 'nombre', this.value)" class="w-full border p-1 text-xs rounded"></td>
+            <td class="p-1"><input type="text" value="${item.nombre || ''}" onchange="actualizarInsumo(${index}, 'nombre', this.value)" class="w-full border p-1 text-xs rounded"></td>
             <td class="p-1"><input type="number" value="${cant}" step="0.01" onchange="actualizarInsumo(${index}, 'cant', this.value)" class="w-full border p-1 text-xs rounded"></td>
             <td class="p-1"><input type="number" value="${costo}" step="0.1" onchange="actualizarInsumo(${index}, 'costo', this.value)" class="w-full border p-1 text-xs rounded"></td>
             <td class="p-1"><input type="number" value="${merma}" onchange="actualizarInsumo(${index}, 'merma', this.value)" class="w-full border p-1 text-xs rounded"></td>
-            <td class="p-1 text-
+            <td class="p-1 text-right font-semibold text-xs">$${subtotal.toFixed(2)}</td>
+            <td class="p-1 text-center"><button onclick="eliminarInsumo(${index})" class="text-red-500 font-bold text-xs hover:text-red-700">X</button></td>
+          </tr>
+        `;
+      });
+      calcular();
+    }
+
+    function agregarInsumo() {
+      if (!Array.isArray(insumos)) insumos = [];
+      insumos.push({ nombre: 'Ingrediente Nuevo', cant: 1, costo: 10, merma: 0 });
+      renderInsumos();
+    }
+
+    function eliminarInsumo(index) {
+      if (insumos.length <= 1) {
+        alert('El producto debe contener al menos 1 insumo.');
+        return;
+      }
+      insumos.splice(index, 1);
+      renderInsumos();
+    }
+
+    function actualizarInsumo(index, campo, valor) {
+      if (!insumos[index]) return;
+      insumos[index][campo] = campo === 'nombre' ? valor : Number(valor) || 0;
+      renderInsumos();
+    }
+
+    function calcular() {
+      const unidades = Math.max(1, Number(document.getElementById('loteUnidades').value) || 1);
+      const horas = Number(document.getElementById('horasTrabajo').value) || 0;
+      const tarifaHora = Number(document.getElementById('costoHora').value) || 0;
+      const empaque = Number(document.getElementById('costoEmpaque').value) || 0;
+      const cif = Number(document.getElementById('costoCIF').value) || 0;
+      const margenPct = Number(document.getElementById('margenDeseado').value) || 0;
+
+      const costoMP = (insumos || []).reduce((sum, item) => {
+        const c = Number(item.cant) || 0;
+        const pu = Number(item.costo) || 0;
+        const m = Number(item.merma) || 0;
+        return sum + (c * pu * (1 + (m / 100)));
+      }, 0);
+
+      const costoMOD = horas * tarifaHora;
+      const costoTotalFabricacion = costoMP + costoMOD + empaque + cif;
+      const costoUnitarioFabricacion = costoTotalFabricacion / unidades;
+
+      const denominador = 1 - (margenPct / 100);
+      const precioVentaLote = denominador > 0 ? (costoTotalFabricacion / denominador) : costoTotalFabricacion;
+      const precioVentaUnitario = precioVentaLote / unidades;
+
+      document.getElementById('resMP').innerText = `$${costoMP.toFixed(2)}`;
+      document.getElementById('resCostoUnit').innerText = `$${costoUnitarioFabricacion.toFixed(2)}`;
+      document.getElementById('resVentaLote').innerText = `$${precioVentaLote.toFixed(2)}`;
+      document.getElementById('resVentaUnit').innerText = `$${precioVentaUnitario.toFixed(2)}`;
+    }
+
+    function nuevoProducto() {
+      document.getElementById('productoNombre').value = 'Nuevo Producto';
+      document.getElementById('loteUnidades').value = 10;
+      document.getElementById('horasTrabajo').value = 1;
+      document.getElementById('costoHora').value = 50;
+      document.getElementById('costoEmpaque').value = 10;
+      document.getElementById('costoCIF').value = 10;
+      document.getElementById('margenDeseado').value = 30;
+      document.getElementById('selectGuardados').value = '';
+      insumos = [{ nombre: 'Harina Base', cant: 1, costo: 20, merma: 0 }];
+      renderInsumos();
+    }
+
+    function guardarProducto() {
+      const nombre = document.getElementById('productoNombre').value.trim();
+      if (!nombre) return alert('Ingresa un nombre para el producto.');
+
+      // Copia profunda para romper mutabilidad por referencia
+      const datosProducto = {
+        nombre: nombre,
+        loteUnidades: Number(document.getElementById('loteUnidades').value) || 1,
+        horasTrabajo: Number(document.getElementById('horasTrabajo').value) || 0,
+        costoHora: Number(document.getElementById('costoHora').value) || 0,
+        costoEmpaque: Number(document.getElementById('costoEmpaque').value) || 0,
+        costoCIF: Number(document.getElementById('costoCIF').value) || 0,
+        margenDeseado: Number(document.getElementById('margenDeseado').value) || 0,
+        insumos: JSON.parse(JSON.stringify(insumos))
+      };
+
+      let productosGuardados = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
+      productosGuardados[nombre] = datosProducto;
+      localStorage.setItem('cotizador_productos', JSON.stringify(productosGuardados));
+      actualizarListaGuardados();
+      cargarSelectorProductosPedido();
+      document.getElementById('selectGuardados').value = nombre;
+      alert(`¡Producto "${nombre}" guardado con éxito!`);
+    }
+
+    function cargarProducto() {
+      const nombre = document.getElementById('selectGuardados').value;
+      if (!nombre) return;
+      let productosGuardados = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
+      const prod = productosGuardados[nombre];
+      if (prod) {
+        document.getElementById('productoNombre').value = prod.nombre || 'Nuevo Producto';
+        document.getElementById('loteUnidades').value = prod.loteUnidades || 10;
+        document.getElementById('horasTrabajo').value = prod.horasTrabajo || 1;
+        document.getElementById('costoHora').value = prod.costoHora || 50;
+        document.getElementById('costoEmpaque').value = prod.costoEmpaque || 10;
+        document.getElementById('costoCIF').value = prod.costoCIF || 10;
+        document.getElementById('margenDeseado').value = prod.margenDeseado || 30;
+        
+        insumos = Array.isArray(prod.insumos) && prod.insumos.length > 0 
+          ? JSON.parse(JSON.stringify(prod.insumos)) 
+          : [{ nombre: 'Harina Base', cant: 1, costo: 20, merma: 0 }];
+        renderInsumos();
+      }
+    }
+
+    function eliminarProducto() {
+      const nombre = document.getElementById('selectGuardados').value;
+      if (!nombre) return alert('Selecciona un producto guardado.');
+      if (confirm(`¿Eliminar "${nombre}"?`)) {
+        let productosGuardados = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
+        delete productosGuardados[nombre];
+        localStorage.setItem('cotizador_productos', JSON.stringify(productosGuardados));
+        actualizarListaGuardados();
+        cargarSelectorProductosPedido();
+        nuevoProducto();
+      }
+    }
+
+    function actualizarListaGuardados() {
+      const select = document.getElementById('selectGuardados');
+      select.innerHTML = '<option value="">-- Seleccionar --</option>';
+      let productosGuardados = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
+      Object.keys(productosGuardados).forEach(n => select.innerHTML += `<option value="${n}">${n}</option>`);
+    }
+
+    // --- MÓDULO DE PEDIDOS ---
+    function generarCodigoPedido() {
+      const rand = Math.floor(1000 + Math.random() * 9000);
+      document.getElementById('pedidoCodigo').value = `PED-${rand}`;
+    }
+
+    function cargarSelectorProductosPedido() {
+      const select = document.getElementById('pedidoSelectProducto');
+      if (!select) return;
+      select.innerHTML = '<option value="">-- Seleccionar Producto --</option>';
+      let productos = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
+      Object.keys(productos).forEach(n => select.innerHTML += `<option value="${n}">${n}</option>`);
+    }
+
+    function calcularPrecioLoteProducto(prodNombre) {
+      let productos = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
+      const prod = productos[prodNombre];
+      if (!prod) return 0;
+
+      const costoMP = (prod.insumos || []).reduce((s, i) => {
+        const cantidadVal = Number(i.cant !== undefined ? i.cant : i.cantidad) || 0;
+        return s + (cantidadVal * Number(i.costo || 0) * (1 + (Number(i.merma || 0) / 100)));
+      }, 0);
+
+      const costoTotal = costoMP + 
+        (Number(prod.horasTrabajo || 0) * Number(prod.costoHora || 0)) + 
+        Number(prod.costoEmpaque || 0) + 
+        Number(prod.costoCIF || 0);
+
+      const
