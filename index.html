@@ -619,10 +619,23 @@
     // --- RENDERIZADO DEFENSIVO DE INSUMOS ---
     function renderInsumos() {
       const tbody = document.getElementById('tablaInsumos');
+      if (!tbody) return;
       tbody.innerHTML = '';
 
       if (!Array.isArray(insumos) || insumos.length === 0) {
-        insumos = [{ nombre: 'Insumo Base', cant: 1, costo: 10, merma: 0 }];
+        insumos = [{ nombre: 'Harina Base', cant: 1, costo: 20, merma: 0 }];
       }
 
-      insumos.forEach((item,
+      insumos.forEach((item, index) => {
+        const cant = parseFloat(item.cant) || 0;
+        const costo = parseFloat(item.costo) || 0;
+        const merma = parseFloat(item.merma) || 0;
+        const subtotal = cant * costo * (1 + (merma / 100));
+
+        tbody.innerHTML += `
+          <tr class="border-b">
+            <td class="p-1"><input type="text" value="${item.nombre \vert{}\vert{} ''}" onchange="actualizarInsumo(${index}, 'nombre', this.value)" class="w-full border p-1 text-xs rounded"></td>
+            <td class="p-1"><input type="number" value="${cant}" step="0.01" onchange="actualizarInsumo(${index}, 'cant', this.value)" class="w-full border p-1 text-xs rounded"></td>
+            <td class="p-1"><input type="number" value="${costo}" step="0.1" onchange="actualizarInsumo(${index}, 'costo', this.value)" class="w-full border p-1 text-xs rounded"></td>
+            <td class="p-1"><input type="number" value="${merma}" onchange="actualizarInsumo(${index}, 'merma', this.value)" class="w-full border p-1 text-xs rounded"></td>
+            <td class="p-1 text-
