@@ -10,8 +10,8 @@
 <body class="bg-slate-100 text-slate-800 p-4 md:p-8">
   <div class="max-w-6xl mx-auto">
     
-    <!-- Navegación por Pestañas Principales -->
-    <div class="flex border-b border-slate-300 mb-6 bg-white rounded-t-xl overflow-hidden shadow-sm text-xs md:text-sm">
+    <!-- Navegación por Pestañas Principales + Botón Reiniciar -->
+    <div class="flex border-b border-slate-300 mb-6 bg-white rounded-t-xl overflow-hidden shadow-sm text-xs md:text-sm items-center pr-3">
       <button id="tabCotizadorBtn" onclick="cambiarModulo('cotizador')" class="flex-1 py-3 px-2 font-bold text-blue-600 border-b-2 border-blue-600 bg-slate-50 flex items-center justify-center gap-1">
         ✏️ Cotizador
       </button>
@@ -23,6 +23,9 @@
       </button>
       <button id="tabReportesBtn" onclick="cambiarModulo('reportes')" class="flex-1 py-3 px-2 font-bold text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1">
         📊 Reportes Financieros
+      </button>
+      <button onclick="reiniciarProyectoCompleto()" class="bg-red-600 text-white font-bold text-xs px-3 py-1.5 rounded hover:bg-red-700 ml-2">
+        🔄 Reiniciar Todo
       </button>
     </div>
 
@@ -558,6 +561,15 @@
       renderHistorialFacturasModule();
     };
 
+    function reiniciarProyectoCompleto() {
+      if (confirm('⚠️ ¿Estás seguro de reiniciar todos los datos? Se borrarán todos los productos, pedidos y facturas guardados.')) {
+        localStorage.removeItem('cotizador_productos');
+        localStorage.removeItem('cotizador_pedidos');
+        localStorage.removeItem('cotizador_facturas');
+        window.location.reload();
+      }
+    }
+
     function cambiarModulo(modulo) {
       const modulos = ['moduloCotizador', 'moduloPedidos', 'moduloFacturacion', 'moduloReportes'];
       const botones = ['tabCotizadorBtn', 'tabPedidosBtn', 'tabFacturacionBtn', 'tabReportesBtn'];
@@ -714,7 +726,6 @@
       const nombre = document.getElementById('productoNombre').value.trim();
       if (!nombre) return alert('Ingresa un nombre para el producto.');
 
-      // Copia profunda para romper mutabilidad por referencia
       const datosProducto = {
         nombre: nombre,
         loteUnidades: Number(document.getElementById('loteUnidades').value) || 1,
@@ -805,4 +816,710 @@
         Number(prod.costoEmpaque || 0) + 
         Number(prod.costoCIF || 0);
 
-      const
+      const den = 1 - (Number(prod.margenDeseado || 0) / 100);
+      return den > 0 ? (costoTotal / den) : costoTotal;
+    }
+
+    function mostrarPrecioTemp() {
+      const prodNombre = document.getElementById('pedidoSelectProducto').value;
+      if (!prodNombre) {
+        document.getElementById('txtPrecioLoteTemp').innerText = 'Precio Lote: $0.00';
+        return;
+      }
+      const precioLote = calcularPrecioLoteProducto(prodNombre);
+      document.getElementById('txtPrecioLoteTemp').innerText = `Precio Lote: $${precioLote.toFixed(2)}`;
+    }
+
+    function agregarItemPedido() {
+      const prodNombre = document.getElementById('pedidoSelectProducto').value;
+      const cant = parseInt(document.getElementById('pedidoCantidadItem').value, 10) || 1;
+
+      if (!prodNombre) return alert('Selecciona un producto del catálogo.');
+
+      const precioLote = calcularPrecioLoteProducto(prodNombre);
+      const subtotal = precioLote * cant;
+
+      itemsPedidoActual.push({ producto: prodNombre, cantidad: cant, precioLote: precioLote, subtotal: subtotal });
+      renderTablaItemsActuales();
+      document.getElementById('pedidoSelectProducto').value = '';
+      document.getElementById('pedidoCantidadItem').value = '1';
+      document.getElementById('txtPrecioLoteTemp').innerText = 'Precio Lote: $0.00';
+    }
+
+    function eliminarItemPedido(index) {
+      itemsPedidoActual.splice(index, 1);
+      renderTablaItemsActuales();
+    }
+
+    function renderTablaItemsActuales() {
+      const tbody = document.getElementById('tablaItemsPedidoActual');
+      if (itemsPedidoActual.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="p-3 text-center text-slate-400">No has agregado productos al pedido.</td></tr>';
+        calcularTotalesPedido();
+        return;
+      }
+
+      tbody.innerHTML = '';
+      itemsPedidoActual.forEach((item, index) => {
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50">
+            <td class="p-2 font-semibold text-slate-800">${item.producto}</td>
+            <td class="p-2 text-center font-bold">${item.cantidad}</td>
+            <td class="p-2 text-right">$${Number(item.precioLote).toFixed(2)}</td>
+            <td class="p-2 text-right font-bold text-slate-700">$${Number(item.subtotal).toFixed(2)}</td>
+            <td class="p-2 text-center">
+              <button onclick="eliminarItemPedido(${index})" class="text-red-500 font-bold hover:text-red-700">X</button>
+            </td>
+          </tr>
+        `;
+      });
+      calcularTotalesPedido();
+    }
+
+    function toggleFormaPago() {
+      const forma = document.getElementById('pedidoFormaPago').value;
+      const camposTC = document.getElementById('camposTarjeta');
+      if (forma === 'Tarjeta de Crédito') {
+        camposTC.classList.remove('hidden');
+      } else {
+        camposTC.classList.add('hidden');
+      }
+      calcularTotalesPedido();
+    }
+
+    function calcularTotalesPedido() {
+      const subtotalGlobal = itemsPedidoActual.reduce((sum, item) => sum + Number(item.subtotal), 0);
+      const formaPago = document.getElementById('pedidoFormaPago').value;
+      const comision = (formaPago === 'Tarjeta de Crédito') ? subtotalGlobal * 0.035 : 0;
+      const total = subtotalGlobal + comision;
+
+      document.getElementById('pedidoSubtotal').innerText = `$${subtotalGlobal.toFixed(2)}`;
+      document.getElementById('pedidoComision').innerText = `$${comision.toFixed(2)}`;
+      document.getElementById('pedidoTotal').innerText = `$${total.toFixed(2)}`;
+    }
+
+    function procesarPedido() {
+      const codigo = document.getElementById('pedidoCodigo').value;
+      const cliente = document.getElementById('pedidoCliente').value.trim();
+      const formaPago = document.getElementById('pedidoFormaPago').value;
+
+      if (!cliente) return alert('Ingresa el nombre del cliente.');
+      if (itemsPedidoActual.length === 0) return alert('Agrega al menos 1 producto al pedido.');
+
+      if (formaPago === 'Tarjeta de Crédito') {
+        const numTc = document.getElementById('tcNumero').value.trim();
+        if (numTc.length < 15) return alert('Ingresa un número de tarjeta válido.');
+      }
+
+      const subtotalVal = itemsPedidoActual.reduce((sum, item) => sum + Number(item.subtotal), 0);
+      const comisionVal = (formaPago === 'Tarjeta de Crédito') ? subtotalVal * 0.035 : 0;
+      const totalVal = subtotalVal + comisionVal;
+
+      const nuevoPedido = {
+        codigo: codigo,
+        cliente: cliente,
+        items: [...itemsPedidoActual],
+        formaPago: formaPago,
+        subtotal: subtotalVal,
+        comision: comisionVal,
+        total: totalVal,
+        saldoPendiente: totalVal,
+        fecha: new Date().toLocaleDateString(),
+        estado: 'Pagado'
+      };
+
+      let pedidos = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
+      pedidos.unshift(nuevoPedido);
+      localStorage.setItem('cotizador_pedidos', JSON.stringify(pedidos));
+
+      alert(`¡Pedido ${codigo} procesado con éxito!`);
+      
+      document.getElementById('pedidoCliente').value = '';
+      document.getElementById('tcNumero').value = '';
+      document.getElementById('tcExpiracion').value = '';
+      document.getElementById('tcCvc').value = '';
+      itemsPedidoActual = [];
+      renderTablaItemsActuales();
+      generarCodigoPedido();
+      renderTablaPedidos();
+      cargarListaPedidosFacturables();
+    }
+
+    function renderTablaPedidos() {
+      let pedidos = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
+      const tbody = document.getElementById('tablaPedidos');
+      
+      if (pedidos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400">No hay pedidos registrados.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = '';
+      pedidos.forEach(p => {
+        const resumenItems = (p.items || []).map(i => `${i.cantidad}x ${i.producto}`).join(', ');
+        const totalNum = Number(p.total) || 0;
+        const saldoNum = p.saldoPendiente !== undefined ? Number(p.saldoPendiente) : totalNum;
+        
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50">
+            <td class="p-2 font-mono font-bold text-slate-800">${p.codigo}</td>
+            <td class="p-2">
+              <span class="font-semibold block">${p.cliente}</span>
+              <span class="text-[10px] text-slate-500 block truncate max-w-[180px]">${resumenItems}</span>
+            </td>
+            <td class="p-2 text-slate-600">${p.formaPago}</td>
+            <td class="p-2 text-right">
+              <span class="font-bold text-amber-600 block">$${saldoNum.toFixed(2)}</span>
+              <span class="text-[10px] text-slate-400 block">Total: $${totalNum.toFixed(2)}</span>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    function limpiarHistorialPedidos() {
+      if (confirm('¿Deseas reiniciar la lista de pedidos?')) {
+        localStorage.removeItem('cotizador_pedidos');
+        renderTablaPedidos();
+        cargarListaPedidosFacturables();
+      }
+    }
+
+    // --- MÓDULO DE FACTURACIÓN ---
+    function cargarListaPedidosFacturables() {
+      const contenedor = document.getElementById('listaPedidosFacturables');
+      if (!contenedor) return;
+      let pedidos = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
+
+      const pedidosPendientes = pedidos.filter(p => {
+        const saldo = p.saldoPendiente !== undefined ? Number(p.saldoPendiente) : Number(p.total);
+        return saldo > 0.001;
+      });
+
+      if (pedidosPendientes.length === 0) {
+        contenedor.innerHTML = '<span class="text-xs text-slate-400 block text-center py-2">No hay pedidos pendientes por facturar.</span>';
+        generarFacturaVisual();
+        return;
+      }
+
+      contenedor.innerHTML = '';
+      pedidosPendientes.forEach(p => {
+        const saldoNum = p.saldoPendiente !== undefined ? Number(p.saldoPendiente) : Number(p.total);
+        contenedor.innerHTML += `
+          <div class="border-b last:border-b-0 pb-2 mb-2">
+            <label class="flex items-center gap-2 text-xs p-1 hover:bg-slate-50 rounded cursor-pointer">
+              <input type="checkbox" name="chkFacturaPedido" value="${p.codigo}" onchange="toggleMontoInput('${p.codigo}'); actualizarClienteAutoFactura();" class="rounded text-blue-600">
+              <span class="font-mono font-bold text-slate-800">${p.codigo}</span>
+              <span class="text-slate-600 truncate flex-1">${p.cliente}</span>
+              <span class="text-slate-500 text-[11px]">Saldo: <strong class="text-amber-600">$${saldoNum.toFixed(2)}</strong></span>
+            </label>
+            <div id="wrapperMonto_${p.codigo}" class="hidden mt-1 pl-6 flex items-center gap-2">
+              <span class="text-[11px] font-semibold text-slate-600">Monto a Facturar: $</span>
+              <input type="number" id="montoFactura_${p.codigo}" value="${saldoNum.toFixed(2)}" max="${saldoNum}" step="0.01" min="0.01" 
+                oninput="validarMontoPedido('${p.codigo}', ${saldoNum}); generarFacturaVisual();" 
+                class="w-32 border rounded p-1 text-xs font-bold text-blue-700">
+            </div>
+          </div>
+        `;
+      });
+      generarFacturaVisual();
+    }
+
+    function toggleMontoInput(codigo) {
+      const checkbox = document.querySelector(`input[name="chkFacturaPedido"][value="${codigo}"]`);
+      const wrapper = document.getElementById(`wrapperMonto_${codigo}`);
+      if (wrapper) {
+        if (checkbox && checkbox.checked) {
+          wrapper.classList.remove('hidden');
+        } else {
+          wrapper.classList.add('hidden');
+        }
+      }
+    }
+
+    function validarMontoPedido(codigo, maxSaldo) {
+      const input = document.getElementById(`montoFactura_${codigo}`);
+      if (!input) return;
+      let val = Number(input.value) || 0;
+      if (val > maxSaldo + 0.001) {
+        alert(`El monto a facturar no puede superar el saldo pendiente ($${maxSaldo.toFixed(2)}).`);
+        input.value = maxSaldo.toFixed(2);
+      }
+    }
+
+    function actualizarClienteAutoFactura() {
+      const checkboxes = document.querySelectorAll('input[name="chkFacturaPedido"]:checked');
+      if (checkboxes.length > 0) {
+        let pedidos = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
+        const primerCodigo = checkboxes[0].value;
+        const primerPedido = pedidos.find(p => p.codigo === primerCodigo);
+        if (primerPedido && !document.getElementById('facturaRazonSocial').value) {
+          document.getElementById('facturaRazonSocial').value = primerPedido.cliente;
+        }
+      }
+      generarFacturaVisual();
+    }
+
+    function generarFacturaVisual() {
+      const checkboxes = document.querySelectorAll('input[name="chkFacturaPedido"]:checked');
+      const codigosSeleccionados = Array.from(checkboxes).map(cb => cb.value);
+
+      if (codigosSeleccionados.length === 0) {
+        document.getElementById('facFolio').innerText = 'FOLIO: FAC-MULT-000';
+        document.getElementById('facPedidosIncluidos').innerText = 'Pedidos Incluidos: Ninguno';
+        document.getElementById('facReceptorNombre').innerText = 'SELECCIONA AL MENOS UN PEDIDO';
+        document.getElementById('facTablaConceptos').innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-400">Selecciona al menos un pedido para consolidar.</td></tr>';
+        document.getElementById('facSubtotal').innerText = '$0.00';
+        document.getElementById('facIva').innerText = '$0.00';
+        document.getElementById('facTotal').innerText = '$0.00';
+        return;
+      }
+
+      let pedidos = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
+      const pedidosElegidos = pedidos.filter(p => codigosSeleccionados.includes(p.codigo));
+
+      const rfc = document.getElementById('facturaRfc').value.trim() || 'XAXX010101000';
+      const razonSocial = document.getElementById('facturaRazonSocial').value.trim() || (pedidosElegidos[0] ? pedidosElegidos[0].cliente : 'CLIENTE');
+      const uso = document.getElementById('facturaUso').value;
+      const regimen = document.getElementById('facturaRegimen').value;
+
+      document.getElementById('facFolio').innerText = `FOLIO: FAC-MULT-${Math.floor(100 + Math.random() * 900)}`;
+      document.getElementById('facFecha').innerText = `Fecha: ${new Date().toLocaleDateString()}`;
+      document.getElementById('facPedidosIncluidos').innerText = `Pedidos Incluidos (${pedidosElegidos.length}): ${codigosSeleccionados.join(', ')}`;
+      document.getElementById('facReceptorNombre').innerText = razonSocial.toUpperCase();
+      document.getElementById('facReceptorRfc').innerText = `RFC: ${rfc.toUpperCase()}`;
+      document.getElementById('facReceptorUso').innerText = `Uso: ${uso}`;
+      document.getElementById('facReceptorRegimen').innerText = `Régimen: ${regimen}`;
+
+      const tbody = document.getElementById('facTablaConceptos');
+      tbody.innerHTML = '';
+      let subtotalConsolidado = 0;
+
+      pedidosElegidos.forEach(p => {
+        const inputMonto = document.getElementById(`montoFactura_${p.codigo}`);
+        const montoIngresado = inputMonto ? (Number(inputMonto.value) || 0) : 0;
+
+        subtotalConsolidado += montoIngresado;
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50">
+            <td class="p-2 font-mono text-[11px] text-blue-700 font-bold">${p.codigo}</td>
+            <td class="p-2 font-semibold">Abono / Facturación de pedido (${p.cliente})</td>
+            <td class="p-2 text-right font-bold">$${montoIngresado.toFixed(2)}</td>
+          </tr>
+        `;
+      });
+
+      const iva = subtotalConsolidado * 0.16;
+      const totalFacturado = subtotalConsolidado + iva;
+
+      document.getElementById('facSubtotal').innerText = `$${subtotalConsolidado.toFixed(2)}`;
+      document.getElementById('facIva').innerText = `$${iva.toFixed(2)}`;
+      document.getElementById('facTotal').innerText = `$${totalFacturado.toFixed(2)}`;
+    }
+
+    function guardarYEmitirFactura() {
+      const checkboxes = document.querySelectorAll('input[name="chkFacturaPedido"]:checked');
+      const codigosSeleccionados = Array.from(checkboxes).map(cb => cb.value);
+
+      if (codigosSeleccionados.length === 0) {
+        alert('Por favor, selecciona al menos un pedido para emitir la factura.');
+        return;
+      }
+
+      let pedidos = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
+      let subtotalConsolidado = 0;
+      let detalleMontosAplicados = {};
+
+      for (let cod of codigosSeleccionados) {
+        const inputMonto = document.getElementById(`montoFactura_${cod}`);
+        const monto = inputMonto ? Number(inputMonto.value) || 0 : 0;
+        
+        if (monto <= 0) {
+          alert(`El monto ingresado para el pedido ${cod} debe ser mayor a cero.`);
+          return;
+        }
+
+        const ped = pedidos.find(p => p.codigo === cod);
+        const saldoActual = ped.saldoPendiente !== undefined ? Number(ped.saldoPendiente) : Number(ped.total);
+
+        if (monto > saldoActual + 0.01) {
+          alert(`El monto para ${cod} ($${monto.toFixed(2)}) excede el saldo disponible ($${saldoActual.toFixed(2)}).`);
+          return;
+        }
+
+        detalleMontosAplicados[cod] = monto;
+        subtotalConsolidado += monto;
+      }
+
+      pedidos = pedidos.map(p => {
+        if (detalleMontosAplicados[p.codigo] !== undefined) {
+          const saldoPrevio = p.saldoPendiente !== undefined ? Number(p.saldoPendiente) : Number(p.total);
+          const nuevoSaldo = Math.max(0, Number((saldoPrevio - detalleMontosAplicados[p.codigo]).toFixed(2)));
+          return { ...p, saldoPendiente: nuevoSaldo };
+        }
+        return p;
+      });
+
+      localStorage.setItem('cotizador_pedidos', JSON.stringify(pedidos));
+
+      const rfc = document.getElementById('facturaRfc').value.trim() || 'XAXX010101000';
+      const razonSocial = document.getElementById('facturaRazonSocial').value.trim() || 'CLIENTE FISCAL';
+      
+      const iva = subtotalConsolidado * 0.16;
+      const total = subtotalConsolidado + iva;
+      const folio = `FAC-MULT-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      const nuevaFactura = {
+        folio: folio,
+        fecha: new Date().toLocaleDateString(),
+        razonSocial: razonSocial,
+        rfc: rfc,
+        pedidos: codigosSeleccionados,
+        detalleMontos: detalleMontosAplicados,
+        subtotal: subtotalConsolidado,
+        iva: iva,
+        total: total
+      };
+
+      let facturas = JSON.parse(localStorage.getItem('cotizador_facturas')) || [];
+      facturas.unshift(nuevaFactura);
+      localStorage.setItem('cotizador_facturas', JSON.stringify(facturas));
+
+      alert(`¡Factura ${folio} emitida con éxito por $${total.toFixed(2)}! Los saldos pendientes han sido actualizados.`);
+      
+      renderTablaPedidos();
+      cargarListaPedidosFacturables();
+      renderHistorialFacturasModule();
+    }
+
+    function renderHistorialFacturasModule() {
+      const contenedor = document.getElementById('historialFacturasLista');
+      if (!contenedor) return;
+      let facturas = JSON.parse(localStorage.getItem('cotizador_facturas')) || [];
+
+      if (facturas.length === 0) {
+        contenedor.innerHTML = '<span class="text-xs text-slate-400 block text-center py-2">No hay facturas guardadas.</span>';
+        return;
+      }
+
+      contenedor.innerHTML = '';
+      facturas.forEach((f, idx) => {
+        contenedor.innerHTML += `
+          <div class="border rounded p-2 bg-slate-50 space-y-1">
+            <div class="flex justify-between items-start">
+              <div>
+                <span class="font-mono font-bold text-blue-700 block">${f.folio}</span>
+                <span class="font-semibold text-slate-800 block">${f.razonSocial}</span>
+                <span class="text-[10px] text-slate-500 font-mono block">${f.rfc} | ${f.fecha}</span>
+              </div>
+              <button onclick="cancelarFactura(${idx})" class="text-[10px] font-bold text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 border border-red-200 px-2 py-0.5 rounded">
+                🗑️ Cancelar
+              </button>
+            </div>
+            <div class="flex justify-between items-center text-[11px] border-t pt-1 mt-1 text-slate-600">
+              <span class="truncate max-w-[150px]">Ped: ${(f.pedidos || []).join(', ')}</span>
+              <span class="font-bold text-emerald-600">$${Number(f.total).toFixed(2)}</span>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function cancelarFactura(index) {
+      let facturas = JSON.parse(localStorage.getItem('cotizador_facturas')) || [];
+      const factura = facturas[index];
+      if (!factura) return;
+
+      if (confirm(`¿Estás seguro de cancelar la factura ${factura.folio}? El monto se reintegrará al saldo del pedido.`)) {
+        let pedidos = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
+
+        if (factura.detalleMontos) {
+          Object.keys(factura.detalleMontos).forEach(cod => {
+            const montoAEliminar = Number(factura.detalleMontos[cod]) || 0;
+            pedidos = pedidos.map(p => {
+              if (p.codigo === cod) {
+                const saldoActual = p.saldoPendiente !== undefined ? Number(p.saldoPendiente) : Number(p.total);
+                const saldoRestaurado = Math.min(Number(p.total), Number((saldoActual + montoAEliminar).toFixed(2)));
+                return { ...p, saldoPendiente: saldoRestaurado };
+              }
+              return p;
+            });
+          });
+        }
+
+        localStorage.setItem('cotizador_pedidos', JSON.stringify(pedidos));
+        facturas.splice(index, 1);
+        localStorage.setItem('cotizador_facturas', JSON.stringify(facturas));
+
+        alert(`Factura ${factura.folio} cancelada con éxito. Saldo reintegrado.`);
+        renderTablaPedidos();
+        cargarListaPedidosFacturables();
+        renderHistorialFacturasModule();
+      }
+    }
+
+    function limpiarHistorialFacturas() {
+      if (confirm('¿Deseas reiniciar la lista de facturas? Esto NO repondrá los saldos de los pedidos.')) {
+        localStorage.removeItem('cotizador_facturas');
+        renderHistorialFacturasModule();
+      }
+    }
+
+    // --- MÓDULO DE REPORTES FINANCIEROS ---
+    function generarReportes() {
+      generarReporteProductos();
+      generarReportePedidos();
+      generarReporteFacturas();
+    }
+
+    function generarReporteProductos() {
+      let productos = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
+      const nombres = Object.keys(productos);
+
+      if (nombres.length === 0) {
+        document.getElementById('kpiTotalProductos').innerText = '0';
+        document.getElementById('kpiCostoProm').innerText = '$0.00';
+        document.getElementById('kpiPrecioProm').innerText = '$0.00';
+        document.getElementById('kpiMargenProm').innerText = '0%';
+        document.getElementById('tablaReporteProductosDetalle').innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400">No hay productos guardados.</td></tr>';
+        return;
+      }
+
+      let totalCostoUnit = 0, totalPrecioUnit = 0, totalMargenPct = 0;
+      let globalMP = 0, globalMOD = 0, globalEmpaque = 0, globalCIF = 0;
+      let chartLabels = [], chartCostos = [], chartPrecios = [], tablaHtml = '';
+
+      nombres.forEach(nombre => {
+        const prod = productos[nombre];
+        const arrInsumos = Array.isArray(prod.insumos) ? prod.insumos : [];
+        const costoMP = arrInsumos.reduce((s, i) => {
+          const cantidadVal = Number(i.cant !== undefined ? i.cant : i.cantidad) || 0;
+          return s + (cantidadVal * Number(i.costo || 0) * (1 + (Number(i.merma || 0) / 100)));
+        }, 0);
+
+        const costoMOD = Number(prod.horasTrabajo || 0) * Number(prod.costoHora || 0);
+        const costoTotal = costoMP + costoMOD + Number(prod.costoEmpaque || 0) + Number(prod.costoCIF || 0);
+        const loteU = Number(prod.loteUnidades) || 1;
+        const costoUnit = costoTotal / loteU;
+        
+        const mDeseado = Number(prod.margenDeseado) || 0;
+        const den = 1 - (mDeseado / 100);
+        const precioLote = den > 0 ? (costoTotal / den) : costoTotal;
+        const precioUnit = precioLote / loteU;
+        const gananciaLote = precioLote - costoTotal;
+
+        totalCostoUnit += costoUnit;
+        totalPrecioUnit += precioUnit;
+        totalMargenPct += mDeseado;
+
+        globalMP += costoMP; globalMOD += costoMOD; globalEmpaque += Number(prod.costoEmpaque || 0); globalCIF += Number(prod.costoCIF || 0);
+
+        chartLabels.push(nombre);
+        chartCostos.push(costoTotal.toFixed(2));
+        chartPrecios.push(precioLote.toFixed(2));
+
+        tablaHtml += `
+          <tr class="hover:bg-slate-50">
+            <td class="p-2 font-semibold text-slate-800">${nombre}</td>
+            <td class="p-2 text-center">${loteU} u.</td>
+            <td class="p-2 text-right">$${costoTotal.toFixed(2)}</td>
+            <td class="p-2 text-right">$${precioLote.toFixed(2)}</td>
+            <td class="p-2 text-right font-bold text-emerald-600">+$${gananciaLote.toFixed(2)}</td>
+            <td class="p-2 text-center"><span class="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded font-bold">${mDeseado}%</span></td>
+          </tr>
+        `;
+      });
+
+      const count = nombres.length;
+      document.getElementById('kpiTotalProductos').innerText = count;
+      document.getElementById('kpiCostoProm').innerText = `$${(totalCostoUnit / count).toFixed(2)}`;
+      document.getElementById('kpiPrecioProm').innerText = `$${(totalPrecioUnit / count).toFixed(2)}`;
+      document.getElementById('kpiMargenProm').innerText = `${(totalMargenPct / count).toFixed(1)}%`;
+      document.getElementById('tablaReporteProductosDetalle').innerHTML = tablaHtml;
+
+      renderGráficosProductos(chartLabels, chartCostos, chartPrecios, [globalMP, globalMOD, globalEmpaque, globalCIF]);
+    }
+
+    function generarReportePedidos() {
+      let pedidos = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
+
+      if (pedidos.length === 0) {
+        document.getElementById('kpiTotalPedidosCount').innerText = '0';
+        document.getElementById('kpiTotalVentasCobrada').innerText = '$0.00';
+        document.getElementById('kpiVentasTC').innerText = '$0.00';
+        document.getElementById('kpiComisionesTC').innerText = '$0.00';
+        document.getElementById('tablaReportePedidosDetalle').innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400">No hay pedidos registrados.</td></tr>';
+        return;
+      }
+
+      let totalVentas = 0, totalTC = 0, totalComisiones = 0, totalEfectivo = 0;
+      let chartPedLabels = [], chartPedTotales = [];
+      let tablaHtml = '';
+
+      pedidos.forEach(p => {
+        const subtotalNum = Number(p.subtotal) || 0;
+        const comisionNum = Number(p.comision) || 0;
+        const totalNum = Number(p.total) || 0;
+
+        totalVentas += totalNum;
+        if (p.formaPago === 'Tarjeta de Crédito') {
+          totalTC += totalNum;
+          totalComisiones += comisionNum;
+        } else {
+          totalEfectivo += totalNum;
+        }
+
+        chartPedLabels.push(p.codigo);
+        chartPedTotales.push(totalNum.toFixed(2));
+
+        tablaHtml += `
+          <tr class="hover:bg-slate-50">
+            <td class="p-2 font-mono font-bold text-slate-800">${p.fecha || '-'} - ${p.codigo}</td>
+            <td class="p-2 font-semibold">${p.cliente}</td>
+            <td class="p-2 text-slate-600">${p.formaPago}</td>
+            <td class="p-2 text-right">$${subtotalNum.toFixed(2)}</td>
+            <td class="p-2 text-right text-purple-600 font-semibold">$${comisionNum.toFixed(2)}</td>
+            <td class="p-2 text-right font-bold text-emerald-600">$${totalNum.toFixed(2)}</td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('kpiTotalPedidosCount').innerText = pedidos.length;
+      document.getElementById('kpiTotalVentasCobrada').innerText = `$${totalVentas.toFixed(2)}`;
+      document.getElementById('kpiVentasTC').innerText = `$${totalTC.toFixed(2)}`;
+      document.getElementById('kpiComisionesTC').innerText = `$${totalComisiones.toFixed(2)}`;
+      document.getElementById('tablaReportePedidosDetalle').innerHTML = tablaHtml;
+
+      renderGráficosPedidos(chartPedLabels, chartPedTotales, [totalTC, totalEfectivo]);
+    }
+
+    function generarReporteFacturas() {
+      let facturas = JSON.parse(localStorage.getItem('cotizador_facturas')) || [];
+
+      if (facturas.length === 0) {
+        document.getElementById('kpiTotalFacturasCount').innerText = '0';
+        document.getElementById('kpiSubtotalFacturado').innerText = '$0.00';
+        document.getElementById('kpiIvaFacturado').innerText = '$0.00';
+        document.getElementById('kpiTotalFacturado').innerText = '$0.00';
+        document.getElementById('tablaReporteFacturasDetalle').innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400">No hay facturas emitidas.</td></tr>';
+        return;
+      }
+
+      let totalSubtotal = 0, totalIva = 0, totalFacturadoGlobal = 0;
+      let chartFacLabels = [], chartFacTotales = [];
+      let tablaHtml = '';
+
+      facturas.forEach(f => {
+        const sub = Number(f.subtotal) || 0;
+        const ivaVal = Number(f.iva) || 0;
+        const tot = Number(f.total) || 0;
+
+        totalSubtotal += sub;
+        totalIva += ivaVal;
+        totalFacturadoGlobal += tot;
+
+        chartFacLabels.push(f.folio);
+        chartFacTotales.push(tot.toFixed(2));
+
+        tablaHtml += `
+          <tr class="hover:bg-slate-50">
+            <td class="p-2 font-mono font-bold text-slate-800">${f.folio} <span class="text-slate-400 block font-normal text-[10px]">${f.fecha}</span></td>
+            <td class="p-2 font-semibold text-slate-800">${f.razonSocial} <span class="text-slate-500 block font-mono text-[10px]">${f.rfc}</span></td>
+            <td class="p-2 font-mono text-xs text-blue-700">${(f.pedidos || []).join(', ')}</td>
+            <td class="p-2 text-right">$${sub.toFixed(2)}</td>
+            <td class="p-2 text-right text-purple-600 font-semibold">$${ivaVal.toFixed(2)}</td>
+            <td class="p-2 text-right font-bold text-emerald-600">$${tot.toFixed(2)}</td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('kpiTotalFacturasCount').innerText = facturas.length;
+      document.getElementById('kpiSubtotalFacturado').innerText = `$${totalSubtotal.toFixed(2)}`;
+      document.getElementById('kpiIvaFacturado').innerText = `$${totalIva.toFixed(2)}`;
+      document.getElementById('kpiTotalFacturado').innerText = `$${totalFacturadoGlobal.toFixed(2)}`;
+      document.getElementById('tablaReporteFacturasDetalle').innerHTML = tablaHtml;
+
+      renderGráficosFacturas(chartFacLabels, chartFacTotales, [totalSubtotal, totalIva]);
+    }
+
+    // --- RENDERIZADO DE GRÁFICOS CHART.JS ---
+    function renderGráficosProductos(labels, costos, precios, estructuraCostos) {
+      if (chartBarInstance) chartBarInstance.destroy();
+      if (chartPieInstance) chartPieInstance.destroy();
+
+      const ctxBar = document.getElementById('chartComparativo').getContext('2d');
+      chartBarInstance = new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: 'Costo Lote ($)', data: costos, backgroundColor: '#cbd5e1' },
+            { label: 'Precio Venta ($)', data: precios, backgroundColor: '#10b981' }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      const ctxPie = document.getElementById('chartEstructuraCostos').getContext('2d');
+      chartPieInstance = new Chart(ctxPie, {
+        type: 'doughnut',
+        data: {
+          labels: ['Materia Prima', 'Mano de Obra', 'Empaque', 'CIF'],
+          datasets: [{ data: estructuraCostos, backgroundColor: ['#3b82f6', '#f59e0b', '#ec4899', '#64748b'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+    function renderGráficosPedidos(pedLabels, pedTotales, metodosData) {
+      if (chartMetodosInstance) chartMetodosInstance.destroy();
+      if (chartVentasPedInstance) chartVentasPedInstance.destroy();
+
+      const ctxMet = document.getElementById('chartMetodosPago').getContext('2d');
+      chartMetodosInstance = new Chart(ctxMet, {
+        type: 'doughnut',
+        data: {
+          labels: ['Tarjeta de Crédito', 'Efectivo / Transf.'],
+          datasets: [{ data: metodosData, backgroundColor: ['#3b82f6', '#10b981'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      const ctxVentas = document.getElementById('chartVentasPorPedido').getContext('2d');
+      chartVentasPedInstance = new Chart(ctxVentas, {
+        type: 'bar',
+        data: {
+          labels: pedLabels,
+          datasets: [{ label: 'Cobro Total ($)', data: pedTotales, backgroundColor: '#8b5cf6' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+    function renderGráficosFacturas(facLabels, facTotales, estructuraData) {
+      if (chartEstructuraFacInstance) chartEstructuraFacInstance.destroy();
+      if (chartMontosFacInstance) chartMontosFacInstance.destroy();
+
+      const ctxEst = document.getElementById('chartEstructuraFacturas').getContext('2d');
+      chartEstructuraFacInstance = new Chart(ctxEst, {
+        type: 'doughnut',
+        data: {
+          labels: ['Subtotal Base', 'IVA Recaudado (16%)'],
+          datasets: [{ data: estructuraData, backgroundColor: ['#3b82f6', '#a855f7'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      const ctxMontos = document.getElementById('chartMontosFacturas').getContext('2d');
+      chartMontosFacInstance = new Chart(ctxMontos, {
+        type: 'bar',
+        data: {
+          labels: facLabels,
+          datasets: [{ label: 'Total Facturado ($)', data: facTotales, backgroundColor: '#10b981' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+  </script>
+</body>
+</html>
