@@ -218,7 +218,7 @@
                   <th class="p-2">Código</th>
                   <th class="p-2">Cliente / Ítems</th>
                   <th class="p-2">Pago</th>
-                  <th class="p-2 text-right">Total</th>
+                  <th class="p-2 text-right">Saldo / Total</th>
                 </tr>
               </thead>
               <tbody id="tablaPedidos" class="divide-y">
@@ -233,16 +233,16 @@
     <!-- ==================== MÓDULO 3: FACTURACIÓN MULTI-PEDIDO ==================== -->
     <div id="moduloFacturacion" class="bg-white p-6 rounded-xl shadow-md border border-slate-200 hidden">
       <h1 class="text-2xl font-bold text-slate-900 mb-2">Módulo de Facturación Fiscal Multi-Pedido</h1>
-      <p class="text-xs text-slate-500 mb-6">Selecciona uno o varios pedidos del cliente para emitir una sola factura consolidada.</p>
+      <p class="text-xs text-slate-500 mb-6">Selecciona uno o varios pedidos con saldo pendiente, ingresa el monto manual a facturar y emite tu comprobante.</p>
 
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div class="lg:col-span-5 bg-slate-50 p-4 rounded-lg border border-slate-200">
-          <h2 class="font-bold text-slate-800 text-sm mb-3 pb-2 border-b">1. Seleccionar Pedidos a Facturar</h2>
+          <h2 class="font-bold text-slate-800 text-sm mb-3 pb-2 border-b">1. Seleccionar Pedidos y Asignar Monto</h2>
           
           <div class="mb-4">
-            <span class="block text-xs font-semibold mb-2 text-slate-700">Marca los pedidos a consolidar:</span>
-            <div id="listaPedidosFacturables" class="max-h-48 overflow-y-auto border rounded bg-white p-2 space-y-2">
-              <span class="text-xs text-slate-400 block text-center py-2">No hay pedidos disponibles.</span>
+            <span class="block text-xs font-semibold mb-2 text-slate-700">Pedidos disponibles con saldo pendiente:</span>
+            <div id="listaPedidosFacturables" class="max-h-64 overflow-y-auto border rounded bg-white p-2 space-y-2">
+              <span class="text-xs text-slate-400 block text-center py-2">No hay pedidos pendientes por facturar.</span>
             </div>
           </div>
 
@@ -325,14 +325,12 @@
                 <thead>
                   <tr class="border-b bg-slate-100 text-slate-700">
                     <th class="p-2">Pedido</th>
-                    <th class="p-2">Concepto / Producto</th>
-                    <th class="p-2 text-center">Cant.</th>
-                    <th class="p-2 text-right">P. Unitario</th>
-                    <th class="p-2 text-right">Importe</th>
+                    <th class="p-2">Concepto / Descripción</th>
+                    <th class="p-2 text-right">Monto Aplicado</th>
                   </tr>
                 </thead>
                 <tbody id="facTablaConceptos" class="divide-y">
-                  <tr><td colspan="5" class="p-4 text-center text-slate-400">Selecciona al menos un pedido para consolidar.</td></tr>
+                  <tr><td colspan="3" class="p-4 text-center text-slate-400">Selecciona al menos un pedido para consolidar.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -608,7 +606,6 @@
       const tbody = document.getElementById('tablaInsumos');
       tbody.innerHTML = '';
 
-      // Garantizar que insumos sea un arreglo válido
       if (!Array.isArray(insumos) || insumos.length === 0) {
         insumos = [{ nombre: 'Insumo Base', cant: 1, costo: 10, merma: 0 }];
       }
@@ -882,6 +879,7 @@
         subtotal: subtotalVal,
         comision: comisionVal,
         total: totalVal,
+        saldoPendiente: totalVal, // Manejo de saldo inicial
         fecha: new Date().toLocaleDateString(),
         estado: 'Pagado'
       };
@@ -916,6 +914,7 @@
       pedidos.forEach(p => {
         const resumenItems = (p.items || []).map(i => `${i.cantidad}x ${i.producto}`).join(', ');
         const totalNum = typeof p.total === 'number' ? p.total : (parseFloat(String(p.total).replace(/[^0-9.-]+/g,"")) || 0);
+        const saldoNum = p.saldoPendiente !== undefined ? parseFloat(p.saldoPendiente) : totalNum;
         
         tbody.innerHTML += `
           <tr class="hover:bg-slate-50">
@@ -925,7 +924,10 @@
               <span class="text-[10px] text-slate-500 block truncate max-w-[180px]">${resumenItems}</span>
             </td>
             <td class="p-2 text-slate-600">${p.formaPago}</td>
-            <td class="p-2 text-right font-bold text-emerald-600">$${totalNum.toFixed(2)}</td>
+            <td class="p-2 text-right">
+              <span class="font-bold text-amber-600 block">$${saldoNum.toFixed(2)}</span>
+              <span class="text-[10px] text-slate-400 block">Total: $${totalNum.toFixed(2)}</span>
+            </td>
           </tr>
         `;
       });
@@ -944,23 +946,61 @@
       const contenedor = document.getElementById('listaPedidosFacturables');
       let pedidos = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
 
-      if (pedidos.length === 0) {
-        contenedor.innerHTML = '<span class="text-xs text-slate-400 block text-center py-2">No hay pedidos registrados.</span>';
+      // Filtrar solo los pedidos cuyo saldo pendiente sea mayor a cero
+      const pedidosPendientes = pedidos.filter(p => {
+        const saldo = p.saldoPendiente !== undefined ? parseFloat(p.saldoPendiente) : p.total;
+        return saldo > 0.001;
+      });
+
+      if (pedidosPendientes.length === 0) {
+        contenedor.innerHTML = '<span class="text-xs text-slate-400 block text-center py-2">No hay pedidos pendientes por facturar (saldo > $0).</span>';
+        generarFacturaVisual();
         return;
       }
 
       contenedor.innerHTML = '';
-      pedidos.forEach(p => {
-        const totalNum = typeof p.total === 'number' ? p.total : (parseFloat(String(p.total).replace(/[^0-9.-]+/g,"")) || 0);
+      pedidosPendientes.forEach(p => {
+        const saldoNum = p.saldoPendiente !== undefined ? parseFloat(p.saldoPendiente) : p.total;
         contenedor.innerHTML += `
-          <label class="flex items-center gap-2 text-xs p-1.5 hover:bg-slate-50 rounded cursor-pointer border-b last:border-b-0">
-            <input type="checkbox" name="chkFacturaPedido" value="${p.codigo}" onchange="actualizarClienteAutoFactura()" class="rounded text-blue-600">
-            <span class="font-mono font-bold text-slate-800">${p.codigo}</span>
-            <span class="text-slate-600 truncate flex-1">${p.cliente}</span>
-            <span class="font-bold text-emerald-600">$${totalNum.toFixed(2)}</span>
-          </label>
+          <div class="border-b last:border-b-0 pb-2 mb-2">
+            <label class="flex items-center gap-2 text-xs p-1 hover:bg-slate-50 rounded cursor-pointer">
+              <input type="checkbox" name="chkFacturaPedido" value="${p.codigo}" onchange="toggleMontoInput('${p.codigo}'); actualizarClienteAutoFactura();" class="rounded text-blue-600">
+              <span class="font-mono font-bold text-slate-800">${p.codigo}</span>
+              <span class="text-slate-600 truncate flex-1">${p.cliente}</span>
+              <span class="text-slate-500 text-[11px]">Saldo: <strong class="text-amber-600">$${saldoNum.toFixed(2)}</strong></span>
+            </label>
+            <div id="wrapperMonto_${p.codigo}" class="hidden mt-1 pl-6 flex items-center gap-2">
+              <span class="text-[11px] font-semibold text-slate-600">Monto a Facturar: $</span>
+              <input type="number" id="montoFactura_${p.codigo}" value="${saldoNum.toFixed(2)}" max="${saldoNum}" step="0.01" min="0.01" 
+                oninput="validarMontoPedido('${p.codigo}', ${saldoNum}); generarFacturaVisual();" 
+                class="w-32 border rounded p-1 text-xs font-bold text-blue-700">
+            </div>
+          </div>
         `;
       });
+      generarFacturaVisual();
+    }
+
+    function toggleMontoInput(codigo) {
+      const checkbox = document.querySelector(`input[name="chkFacturaPedido"][value="${codigo}"]`);
+      const wrapper = document.getElementById(`wrapperMonto_${codigo}`);
+      if (wrapper) {
+        if (checkbox && checkbox.checked) {
+          wrapper.classList.remove('hidden');
+        } else {
+          wrapper.classList.add('hidden');
+        }
+      }
+    }
+
+    function validarMontoPedido(codigo, maxSaldo) {
+      const input = document.getElementById(`montoFactura_${codigo}`);
+      if (!input) return;
+      let val = parseFloat(input.value) || 0;
+      if (val > maxSaldo) {
+        alert(`El monto a facturar no puede superar el saldo pendiente ($${maxSaldo.toFixed(2)}).`);
+        input.value = maxSaldo.toFixed(2);
+      }
     }
 
     function actualizarClienteAutoFactura() {
@@ -984,7 +1024,7 @@
         document.getElementById('facFolio').innerText = 'FOLIO: FAC-MULT-000';
         document.getElementById('facPedidosIncluidos').innerText = 'Pedidos Incluidos: Ninguno';
         document.getElementById('facReceptorNombre').innerText = 'SELECCIONA AL MENOS UN PEDIDO';
-        document.getElementById('facTablaConceptos').innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-400">Selecciona al menos un pedido para consolidar.</td></tr>';
+        document.getElementById('facTablaConceptos').innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-400">Selecciona al menos un pedido para consolidar.</td></tr>';
         document.getElementById('facSubtotal').innerText = '$0.00';
         document.getElementById('facIva').innerText = '$0.00';
         document.getElementById('facTotal').innerText = '$0.00';
@@ -1012,18 +1052,17 @@
       let subtotalConsolidado = 0;
 
       pedidosElegidos.forEach(p => {
-        (p.items || []).forEach(item => {
-          subtotalConsolidado += item.subtotal;
-          tbody.innerHTML += `
-            <tr class="hover:bg-slate-50">
-              <td class="p-2 font-mono text-[11px] text-blue-700 font-bold">${p.codigo}</td>
-              <td class="p-2 font-semibold">${item.producto}</td>
-              <td class="p-2 text-center">${item.cantidad}</td>
-              <td class="p-2 text-right">$${item.precioLote.toFixed(2)}</td>
-              <td class="p-2 text-right font-bold">$${item.subtotal.toFixed(2)}</td>
-            </tr>
-          `;
-        });
+        const inputMonto = document.getElementById(`montoFactura_${p.codigo}`);
+        const montoIngresado = inputMonto ? (parseFloat(inputMonto.value) || 0) : 0;
+
+        subtotalConsolidado += montoIngresado;
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50">
+            <td class="p-2 font-mono text-[11px] text-blue-700 font-bold">${p.codigo}</td>
+            <td class="p-2 font-semibold">Abono / Facturación de pedido (${p.cliente})</td>
+            <td class="p-2 text-right font-bold">$${montoIngresado.toFixed(2)}</td>
+          </tr>
+        `;
       });
 
       const iva = subtotalConsolidado * 0.16;
@@ -1044,16 +1083,47 @@
       }
 
       let pedidos = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
-      const pedidosElegidos = pedidos.filter(p => codigosSeleccionados.includes(p.codigo));
-
-      const rfc = document.getElementById('facturaRfc').value.trim() || 'XAXX010101000';
-      const razonSocial = document.getElementById('facturaRazonSocial').value.trim() || pedidosElegidos[0].cliente;
-      
       let subtotalConsolidado = 0;
-      pedidosElegidos.forEach(p => {
-        (p.items || []).forEach(i => subtotalConsolidado += i.subtotal);
+      let detalleMontosAplicados = {};
+
+      // Validar y acumular montos
+      for (let cod of codigosSeleccionados) {
+        const inputMonto = document.getElementById(`montoFactura_${cod}`);
+        const monto = inputMonto ? parseFloat(inputMonto.value) || 0 : 0;
+        
+        if (monto <= 0) {
+          alert(`El monto ingresado para el pedido ${cod} debe ser mayor a cero.`);
+          return;
+        }
+
+        const ped = pedidos.find(p => p.codigo === cod);
+        const saldoActual = ped.saldoPendiente !== undefined ? parseFloat(ped.saldoPendiente) : ped.total;
+
+        if (monto > saldoActual + 0.01) {
+          alert(`El monto para ${cod} ($${monto.toFixed(2)}) excede el saldo disponible ($${saldoActual.toFixed(2)}).`);
+          return;
+        }
+
+        detalleMontosAplicados[cod] = monto;
+        subtotalConsolidado += monto;
+      }
+
+      // Actualizar saldos acumulados de los pedidos
+      pedidos = pedidos.map(p => {
+        if (detalleMontosAplicados[p.codigo] !== undefined) {
+          const saldoPrevio = p.saldoPendiente !== undefined ? parseFloat(p.saldoPendiente) : p.total;
+          const nuevoSaldo = Math.max(0, saldoPrevio - detalleMontosAplicados[p.codigo]);
+          return { ...p, saldoPendiente: nuevoSaldo };
+        }
+        return p;
       });
 
+      // Guardar pedidos con saldos actualizados
+      localStorage.setItem('cotizador_pedidos', JSON.stringify(pedidos));
+
+      const rfc = document.getElementById('facturaRfc').value.trim() || 'XAXX010101000';
+      const razonSocial = document.getElementById('facturaRazonSocial').value.trim() || 'CLIENTE FISCAL';
+      
       const iva = subtotalConsolidado * 0.16;
       const total = subtotalConsolidado + iva;
       const folio = `FAC-MULT-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -1073,10 +1143,10 @@
       facturas.unshift(nuevaFactura);
       localStorage.setItem('cotizador_facturas', JSON.stringify(facturas));
 
-      alert(`¡Factura ${folio} emitida y registrada con éxito por un total de $${total.toFixed(2)}!`);
+      alert(`¡Factura ${folio} emitida con éxito por $${total.toFixed(2)}! Los saldos pendientes han sido actualizados.`);
       
-      checkboxes.forEach(cb => cb.checked = false);
-      generarFacturaVisual();
+      renderTablaPedidos();
+      cargarListaPedidosFacturables();
     }
 
     // --- MÓDULO DE REPORTES ---
