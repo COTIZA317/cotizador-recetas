@@ -3,43 +3,162 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistema de Cotización, Pedidos Multi-Factura & Reportes</title>
+  <title>Sistema ERP Enterprise: Cotizador, Pedidos, CxP, Tesorería, Contabilidad, Nóminas & Control de Usuarios</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- SheetJS para procesamiento de Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
-<body class="bg-slate-100 text-slate-800 p-4 md:p-8">
-  <div class="max-w-6xl mx-auto">
+<body class="bg-slate-100 text-slate-800 p-3 md:p-6 transition-colors duration-200">
+  <div class="max-w-7xl mx-auto space-y-6">
     
-    <!-- Navegación por Pestañas Principales + Botón Reiniciar -->
-    <div class="flex border-b border-slate-300 mb-6 bg-white rounded-t-xl overflow-hidden shadow-sm text-xs md:text-sm items-center pr-3 overflow-x-auto">
+    <!-- BARRA SUPERIOR DE SESIÓN -->
+    <div id="barraSesion" class="bg-slate-900 text-white p-3 rounded-xl flex flex-wrap justify-between items-center text-xs shadow-md">
+      <div class="flex items-center gap-2">
+        <span class="font-bold text-blue-400" id="lblUsuarioActivo">Sesión: No iniciada</span>
+        <span class="bg-slate-800 px-2 py-0.5 rounded text-slate-300" id="lblPerfilActivo">Perfil: Invitado</span>
+      </div>
+      <div class="flex items-center gap-2 mt-2 sm:mt-0">
+        <button id="btnAbrirLogin" onclick="mostrarModalLogin()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded font-bold">🔑 Iniciar Sesión</button>
+        <button id="btnCerrarSesion" onclick="cerrarSesion()" class="hidden bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded font-bold">🚪 Cerrar Sesión</button>
+      </div>
+    </div>
+
+    <!-- NAVEGACIÓN POR PESTAÑAS PRINCIPALES -->
+    <div id="navegacionPrincipal" class="flex border-b border-slate-300 bg-white rounded-t-xl overflow-hidden shadow-sm text-xs md:text-sm items-center pr-3 overflow-x-auto">
       <button id="tabCotizadorBtn" onclick="cambiarModulo('cotizador')" class="py-3 px-3 font-bold text-blue-600 border-b-2 border-blue-600 bg-slate-50 flex items-center justify-center gap-1 whitespace-nowrap">
-        ✏️ Catálogo de Productos
+        ✏️ Catálogo Productos
       </button>
       <button id="tabCotizacionesMultiBtn" onclick="cambiarModulo('cotizacionesMulti')" class="py-3 px-3 font-bold text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1 whitespace-nowrap">
-        📋 Cotizaciones Multi-Producto
+        📋 Cotizaciones
       </button>
       <button id="tabPedidosBtn" onclick="cambiarModulo('pedidos')" class="py-3 px-3 font-bold text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1 whitespace-nowrap">
         🛒 Pedidos & TC
       </button>
       <button id="tabFacturacionBtn" onclick="cambiarModulo('facturacion')" class="py-3 px-3 font-bold text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1 whitespace-nowrap">
-        📄 Facturación Multi-Pedido
+        📄 Facturación CFDI
+      </button>
+      <button id="tabInsumosCxPBtn" onclick="cambiarModulo('insumosCxP')" class="py-3 px-3 font-bold text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1 whitespace-nowrap">
+        📦 Insumos & CxP
+      </button>
+      <button id="tabTesoreriaBtn" onclick="cambiarModulo('tesoreria')" class="py-3 px-3 font-bold text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1 whitespace-nowrap">
+        🏦 Tesorería & Bancos
+      </button>
+      <button id="tabContabilidadBtn" onclick="cambiarModulo('contabilidad')" class="py-3 px-3 font-bold text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1 whitespace-nowrap">
+        ⚖️ Contabilidad & Activos
+      </button>
+      <button id="tabNominasBtn" onclick="cambiarModulo('nominas')" class="py-3 px-3 font-bold text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1 whitespace-nowrap">
+        👥 Nóminas
+      </button>
+      <button id="tabUsuariosBtn" onclick="cambiarModulo('usuarios')" class="py-3 px-3 font-bold text-purple-600 hover:text-purple-800 flex items-center justify-center gap-1 whitespace-nowrap">
+        🔐 Permisos & Usuarios
       </button>
       <button id="tabReportesBtn" onclick="cambiarModulo('reportes')" class="py-3 px-3 font-bold text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1 whitespace-nowrap">
-        📊 Reportes Financieros
+        📊 Reportes
       </button>
       <button onclick="reiniciarProyectoCompleto()" class="bg-red-600 text-white font-bold text-xs px-3 py-1.5 rounded hover:bg-red-700 ml-auto whitespace-nowrap">
         🔄 Reiniciar Todo
       </button>
     </div>
 
+    <!-- ==================== MÓDULO LOGIN (MODAL) ==================== -->
+    <div id="modalLogin" class="fixed inset-0 bg-slate-900 bg-opacity-75 flex justify-center items-center p-4 z-50 hidden">
+      <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md space-y-4">
+        <div class="flex justify-between items-center border-b pb-2">
+          <h2 class="text-lg font-bold text-slate-800">🔐 Iniciar Sesión en el ERP</h2>
+          <button onclick="cerrarModalLogin()" class="text-slate-400 font-bold hover:text-slate-600">✕</button>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1">Correo Electrónico</label>
+          <input type="email" id="loginEmail" placeholder="admin@empresa.com" class="w-full border rounded p-2 text-xs">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1">Contraseña</label>
+          <input type="password" id="loginPassword" placeholder="••••••••" class="w-full border rounded p-2 text-xs">
+        </div>
+        <button onclick="autenticarUsuario()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded text-xs">Ingresar al Sistema</button>
+
+        <div class="border-t pt-3 text-[11px] text-slate-500 space-y-1 bg-slate-50 p-2 rounded">
+          <span class="font-bold block text-slate-700">Usuarios Demo Preconfigurados:</span>
+          <div>• <strong>Desarrollador:</strong> admin@dev.com / dev123</div>
+          <div>• <strong>Administrador (ADMIN):</strong> admin@empresa.com / ADM1N7</div>
+          <div>• <strong>Cliente:</strong> cliente@empresa.com / cliente123</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== MÓDULO USUARIOS Y PERMISOS (SOLO DESARROLLADOR) ==================== -->
+    <div id="moduloUsuarios" class="modulo-card bg-white p-6 rounded-xl shadow-md border border-slate-200 hidden">
+      <div class="flex justify-between items-center mb-4 pb-2 border-b">
+        <div>
+          <h1 class="text-2xl font-bold text-slate-900">Control de Usuarios & Autorizaciones de Módulos</h1>
+          <p class="text-xs text-slate-500">Exclusivo para perfil <strong>Desarrollador</strong>. Asigna permisos por usuario y crea cuentas.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- CREAR USUARIOS -->
+        <div class="lg:col-span-4 bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+          <h2 class="font-bold text-slate-800 text-sm border-b pb-2">1. Alta de Nuevo Usuario</h2>
+          <div>
+            <label class="block text-xs font-semibold mb-1">Nombre Completo</label>
+            <input type="text" id="nuevoNombre" placeholder="Ej. Carlos Pérez" class="w-full border rounded p-2 text-xs">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1">Correo Electrónico</label>
+            <input type="email" id="nuevoEmail" placeholder="usuario@empresa.com" class="w-full border rounded p-2 text-xs">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1">Contraseña</label>
+            <input type="password" id="nuevaPassword" placeholder="••••••••" class="w-full border rounded p-2 text-xs">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1">Perfil</label>
+            <select id="nuevoPerfil" class="w-full border rounded p-2 text-xs font-bold">
+              <option value="Administrativo">Administrativo</option>
+              <option value="Cliente">Cliente</option>
+              <option value="Desarrollador">Desarrollador</option>
+            </select>
+          </div>
+          <button onclick="registrarNuevoUsuario()" class="w-full bg-purple-600 text-white font-bold text-xs py-2.5 rounded hover:bg-purple-700">
+            ➕ Crear Usuario
+          </button>
+        </div>
+
+        <!-- MATRIZ DE AUTORIZACIONES -->
+        <div class="lg:col-span-8 bg-slate-50 p-4 rounded-lg border border-slate-200">
+          <h2 class="font-bold text-slate-800 text-sm border-b pb-2 mb-3">2. Matriz de Autorización de Módulos por Usuario</h2>
+          <div class="overflow-x-auto bg-white border rounded">
+            <table class="w-full text-left text-xs">
+              <thead>
+                <tr class="bg-slate-100 text-slate-700 border-b">
+                  <th class="p-2">Usuario / Correo</th>
+                  <th class="p-2">Perfil</th>
+                  <th class="p-2 text-center">Permisos de Módulos</th>
+                </tr>
+              </thead>
+              <tbody id="tablaMatrizUsuarios" class="divide-y"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ==================== MÓDULO 1: CATÁLOGO DE PRODUCTOS ==================== -->
-    <div id="moduloCotizador" class="bg-white p-6 rounded-xl shadow-md border border-slate-200">
-      <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-4 border-b gap-4">
+    <div id="moduloCotizador" class="modulo-card bg-white p-6 rounded-xl shadow-md border border-slate-200">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 pb-3 border-b gap-4">
         <h1 class="text-2xl font-bold text-slate-900">Catálogo de Productos</h1>
         <div class="flex items-center gap-2 w-full md:w-auto">
-          <label class="text-xs font-semibold text-slate-600 whitespace-nowrap">Cargar guardado:</label>
+          <label class="text-xs font-semibold text-slate-600 whitespace-nowrap">Tema:</label>
+          <select onchange="cambiarTemaModulo('moduloCotizador', this.value)" class="border rounded p-1 text-xs">
+            <option value="classic">Clásico (Slate)</option>
+            <option value="emerald">Esmeralda</option>
+            <option value="purple">Púrpura</option>
+            <option value="amber">Ámbar</option>
+            <option value="dark">Oscuro</option>
+          </select>
           <select id="selectGuardados" onchange="cargarProducto()" class="border rounded p-1.5 text-xs w-full md:w-48">
-            <option value="">-- Seleccionar --</option>
+            <option value="">-- Cargar Guardado --</option>
           </select>
         </div>
       </div>
@@ -61,7 +180,6 @@
         </div>
       </div>
 
-      <!-- SECCIÓN MATERIA PRIMA / INSUMOS -->
       <div class="mb-6">
         <h2 class="text-lg font-semibold mb-3 text-slate-700">1. Materia Prima (Receta)</h2>
         <div class="overflow-x-auto">
@@ -76,9 +194,7 @@
                 <th class="p-2 w-12"></th>
               </tr>
             </thead>
-            <tbody id="tablaInsumos">
-              <!-- Renderizado automático -->
-            </tbody>
+            <tbody id="tablaInsumos"></tbody>
           </table>
         </div>
         <button onclick="agregarInsumo()" class="bg-slate-800 text-white text-xs px-3 py-2 rounded hover:bg-slate-700">+ Agregar Insumo</button>
@@ -107,7 +223,7 @@
       </div>
 
       <div class="bg-slate-900 text-white p-5 rounded-lg">
-        <h3 class="text-sm font-semibold uppercase text-slate-400 mb-3">Resumen de Cotización</h3>
+        <h3 class="text-sm font-semibold uppercase text-slate-400 mb-3">Resumen de Productos</h3>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
           <div><span class="block text-xs text-slate-400">Costo MP Total</span><span id="resMP" class="text-lg font-bold">$0.00</span></div>
           <div><span class="block text-xs text-slate-400">Costo Prod. Unitario</span><span id="resCostoUnit" class="text-lg font-bold text-amber-400">$0.00</span></div>
@@ -117,28 +233,40 @@
       </div>
     </div>
 
-    <!-- ==================== MÓDULO: COTIZACIONES MULTI-PRODUCTO ==================== -->
-    <div id="moduloCotizacionesMulti" class="bg-white p-6 rounded-xl shadow-md border border-slate-200 hidden">
-      <h1 class="text-2xl font-bold text-slate-900 mb-2">Gestión de Cotizaciones Multi-Producto</h1>
-      <p class="text-xs text-slate-500 mb-6">Genera propuestas comerciales personalizadas agregando múltiples ítems antes de proceder a la venta.</p>
+    <!-- ==================== MÓDULO 2: COTIZACIONES MULTI-PRODUCTO ==================== -->
+    <div id="moduloCotizacionesMulti" class="modulo-card bg-white p-6 rounded-xl shadow-md border border-slate-200 hidden">
+      <div class="flex justify-between items-center mb-4 pb-2 border-b">
+        <div>
+          <h1 class="text-2xl font-bold text-slate-900">Cotizaciones Multi-Producto</h1>
+          <p class="text-xs text-slate-500">Propuestas comerciales personalizadas.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-xs font-semibold text-slate-600">Tema:</label>
+          <select onchange="cambiarTemaModulo('moduloCotizacionesMulti', this.value)" class="border rounded p-1 text-xs">
+            <option value="classic">Clásico</option>
+            <option value="emerald">Esmeralda</option>
+            <option value="purple">Púrpura</option>
+            <option value="dark">Oscuro</option>
+          </select>
+        </div>
+      </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div class="lg:col-span-7 bg-slate-50 p-4 rounded-lg border border-slate-200">
-          <h2 class="font-bold text-slate-800 text-sm mb-4 pb-2 border-b">1. Datos de la Cotización e Ítems</h2>
-          
+          <h2 class="font-bold text-slate-800 text-sm mb-4 pb-2 border-b">1. Datos de Cotización</h2>
           <div class="grid grid-cols-2 gap-3 mb-4">
             <div>
-              <label class="block text-xs font-semibold mb-1">Folio Cotización (Serie COT)</label>
+              <label class="block text-xs font-semibold mb-1">Folio (Serie COT)</label>
               <input type="text" id="cotizacionCodigo" readonly class="w-full bg-slate-200 border rounded p-2 text-xs font-mono font-bold text-blue-800">
             </div>
             <div>
               <label class="block text-xs font-semibold mb-1">Cliente / Prospecto</label>
-              <input type="text" id="cotizacionCliente" placeholder="Nombre del prospecto" class="w-full border rounded p-2 text-xs">
+              <input type="text" id="cotizacionCliente" placeholder="Nombre del cliente" class="w-full border rounded p-2 text-xs">
             </div>
           </div>
 
           <div class="bg-white p-3 rounded border border-slate-200 mb-4">
-            <span class="block text-xs font-bold text-slate-700 mb-2">➕ Seleccionar Producto del Catálogo</span>
+            <span class="block text-xs font-bold text-slate-700 mb-2">➕ Agregar Producto</span>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div class="sm:col-span-2">
                 <select id="cotizacionSelectProducto" onchange="mostrarPrecioTempCotizacion()" class="w-full border rounded p-2 text-xs">
@@ -151,27 +279,22 @@
             </div>
             <div class="flex justify-between items-center mt-2 pt-2 border-t text-xs">
               <span id="txtPrecioLoteTempCotizacion" class="text-slate-500 font-semibold">Precio Lote: $0.00</span>
-              <button onclick="agregarItemCotizacion()" class="bg-blue-600 text-white font-bold px-3 py-1.5 rounded hover:bg-blue-700 text-xs">
-                + Agregar a Cotización
-              </button>
+              <button onclick="agregarItemCotizacion()" class="bg-blue-600 text-white font-bold px-3 py-1.5 rounded hover:bg-blue-700 text-xs">+ Agregar</button>
             </div>
           </div>
 
-          <h3 class="text-xs font-bold text-slate-700 mb-2">Detalle de la Cotización Actual</h3>
           <div class="overflow-x-auto border rounded bg-white mb-4">
             <table class="w-full text-left text-xs">
               <thead>
                 <tr class="bg-slate-100 text-slate-600 border-b">
                   <th class="p-2">Producto</th>
-                  <th class="p-2 text-center">Cant. Lotes</th>
+                  <th class="p-2 text-center">Cant.</th>
                   <th class="p-2 text-right">Precio Lote</th>
                   <th class="p-2 text-right">Subtotal</th>
                   <th class="p-2 w-8"></th>
                 </tr>
               </thead>
-              <tbody id="tablaItemsCotizacionActual" class="divide-y">
-                <tr><td colspan="5" class="p-3 text-center text-slate-400">No has agregado productos a la cotización.</td></tr>
-              </tbody>
+              <tbody id="tablaItemsCotizacionActual" class="divide-y"></tbody>
             </table>
           </div>
 
@@ -184,72 +307,65 @@
           </div>
 
           <div class="bg-slate-900 text-white p-4 rounded mb-4">
-            <div class="flex justify-between text-xs text-slate-400 mb-1">
-              <span>Subtotal Productos:</span>
-              <span id="cotizacionSubtotal">$0.00</span>
-            </div>
-            <div class="flex justify-between text-xs text-slate-400 mb-1">
-              <span>Comisión Estimada TC (3.5%):</span>
-              <span id="cotizacionComision">$0.00</span>
-            </div>
-            <div class="flex justify-between text-sm font-bold text-emerald-400 border-t border-slate-700 pt-2">
-              <span>Total Estimado Cotización:</span>
-              <span id="cotizacionTotal">$0.00</span>
-            </div>
+            <div class="flex justify-between text-xs text-slate-400 mb-1"><span>Subtotal:</span><span id="cotizacionSubtotal">$0.00</span></div>
+            <div class="flex justify-between text-xs text-slate-400 mb-1"><span>Comisión TC (3.5%):</span><span id="cotizacionComision">$0.00</span></div>
+            <div class="flex justify-between text-sm font-bold text-emerald-400 border-t border-slate-700 pt-2"><span>Total Estimado:</span><span id="cotizacionTotal">$0.00</span></div>
           </div>
 
-          <button onclick="procesarCotizacion()" class="w-full bg-blue-600 text-white text-xs font-bold py-2.5 rounded hover:bg-blue-700">
-            💾 Registrar & Guardar Cotización
-          </button>
+          <button onclick="procesarCotizacion()" class="w-full bg-blue-600 text-white text-xs font-bold py-2.5 rounded hover:bg-blue-700">💾 Registrar Cotización</button>
         </div>
 
         <div class="lg:col-span-5">
           <div class="flex justify-between items-center mb-4">
-            <h2 class="font-bold text-slate-800 text-sm">2. Historial de Cotizaciones Guardadas</h2>
-            <button onclick="limpiarHistorialCotizaciones()" class="text-[11px] text-red-600 underline font-semibold">Limpiar Cotizaciones</button>
+            <h2 class="font-bold text-slate-800 text-sm">2. Historial de Cotizaciones</h2>
+            <button onclick="limpiarHistorialCotizaciones()" class="text-[11px] text-red-600 underline font-semibold">Limpiar</button>
           </div>
           <div class="overflow-x-auto border rounded-lg">
             <table class="w-full text-left text-xs">
               <thead>
                 <tr class="bg-slate-100 text-slate-700 border-b">
                   <th class="p-2">Folio</th>
-                  <th class="p-2">Prospecto / Ítems</th>
-                  <th class="p-2">Pago Est.</th>
-                  <th class="p-2 text-right">Monto Total</th>
+                  <th class="p-2">Cliente / Ítems</th>
+                  <th class="p-2 text-right">Total</th>
                 </tr>
               </thead>
-              <tbody id="tablaCotizaciones" class="divide-y">
-                <tr><td colspan="4" class="p-4 text-center text-slate-400">No hay cotizaciones registradas.</td></tr>
-              </tbody>
+              <tbody id="tablaCotizaciones" class="divide-y"></tbody>
             </table>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ==================== MÓDULO 2: PEDIDOS Y COBRO ==================== -->
-    <div id="moduloPedidos" class="bg-white p-6 rounded-xl shadow-md border border-slate-200 hidden">
-      <h1 class="text-2xl font-bold text-slate-900 mb-2">Gestión de Pedidos Multi-Producto</h1>
-      <p class="text-xs text-slate-500 mb-6">Agrega varios productos a una misma orden o carga datos base desde una cotización previa.</p>
+    <!-- ==================== MÓDULO 3: PEDIDOS Y COBRO ==================== -->
+    <div id="moduloPedidos" class="modulo-card bg-white p-6 rounded-xl shadow-md border border-slate-200 hidden">
+      <div class="flex justify-between items-center mb-4 pb-2 border-b">
+        <div>
+          <h1 class="text-2xl font-bold text-slate-900">Pedidos & Cobro TC</h1>
+          <p class="text-xs text-slate-500">Gestión de órdenes directas o provenientes de cotización.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-xs font-semibold text-slate-600">Tema:</label>
+          <select onchange="cambiarTemaModulo('moduloPedidos', this.value)" class="border rounded p-1 text-xs">
+            <option value="classic">Clásico</option>
+            <option value="emerald">Esmeralda</option>
+            <option value="purple">Púrpura</option>
+            <option value="dark">Oscuro</option>
+          </select>
+        </div>
+      </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div class="lg:col-span-7 bg-slate-50 p-4 rounded-lg border border-slate-200">
-          <h2 class="font-bold text-slate-800 text-sm mb-4 pb-2 border-b">1. Datos del Pedido e Ítems</h2>
-          
-          <!-- IMPORTAR COTIZACIÓN GUARDADA -->
           <div class="mb-4 bg-blue-50 border border-blue-200 p-3 rounded-lg">
-            <label class="block text-xs font-bold text-blue-900 mb-1">📋 Importar Cotización Previa como Base:</label>
-            <div class="flex gap-2">
-              <select id="selectCotizacionBase" onchange="cargarCotizacionBaseEnPedido()" class="w-full border rounded p-1.5 text-xs bg-white text-slate-800 font-semibold">
-                <option value="">-- Seleccionar Cotización Guardada --</option>
-              </select>
-            </div>
-            <span class="text-[10px] text-blue-700 block mt-1">Al cargar una cotización, sus datos e ítems se copiarán aquí para que puedas modificarlos o agregar más productos.</span>
+            <label class="block text-xs font-bold text-blue-900 mb-1">📋 Importar Cotización Base:</label>
+            <select id="selectCotizacionBase" onchange="cargarCotizacionBaseEnPedido()" class="w-full border rounded p-1.5 text-xs bg-white text-slate-800 font-semibold">
+              <option value="">-- Seleccionar Cotización Guardada --</option>
+            </select>
           </div>
 
           <div class="grid grid-cols-2 gap-3 mb-4">
             <div>
-              <label class="block text-xs font-semibold mb-1">Código Pedido (Serie PED)</label>
+              <label class="block text-xs font-semibold mb-1">Código Pedido</label>
               <input type="text" id="pedidoCodigo" readonly class="w-full bg-slate-200 border rounded p-2 text-xs font-mono font-bold text-slate-700">
             </div>
             <div>
@@ -259,7 +375,7 @@
           </div>
 
           <div class="bg-white p-3 rounded border border-slate-200 mb-4">
-            <span class="block text-xs font-bold text-slate-700 mb-2">➕ Seleccionar Producto del Catálogo</span>
+            <span class="block text-xs font-bold text-slate-700 mb-2">➕ Agregar Producto</span>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div class="sm:col-span-2">
                 <select id="pedidoSelectProducto" onchange="mostrarPrecioTemp()" class="w-full border rounded p-2 text-xs">
@@ -272,27 +388,22 @@
             </div>
             <div class="flex justify-between items-center mt-2 pt-2 border-t text-xs">
               <span id="txtPrecioLoteTemp" class="text-slate-500 font-semibold">Precio Lote: $0.00</span>
-              <button onclick="agregarItemPedido()" class="bg-blue-600 text-white font-bold px-3 py-1.5 rounded hover:bg-blue-700 text-xs">
-                + Agregar al Pedido
-              </button>
+              <button onclick="agregarItemPedido()" class="bg-blue-600 text-white font-bold px-3 py-1.5 rounded hover:bg-blue-700 text-xs">+ Agregar</button>
             </div>
           </div>
 
-          <h3 class="text-xs font-bold text-slate-700 mb-2">Detalle del Pedido Actual</h3>
           <div class="overflow-x-auto border rounded bg-white mb-4">
             <table class="w-full text-left text-xs">
               <thead>
                 <tr class="bg-slate-100 text-slate-600 border-b">
                   <th class="p-2">Producto</th>
-                  <th class="p-2 text-center">Cant. Lotes</th>
+                  <th class="p-2 text-center">Cant.</th>
                   <th class="p-2 text-right">Precio Lote</th>
                   <th class="p-2 text-right">Subtotal</th>
                   <th class="p-2 w-8"></th>
                 </tr>
               </thead>
-              <tbody id="tablaItemsPedidoActual" class="divide-y">
-                <tr><td colspan="5" class="p-3 text-center text-slate-400">No has agregado productos al pedido.</td></tr>
-              </tbody>
+              <tbody id="tablaItemsPedidoActual" class="divide-y"></tbody>
             </table>
           </div>
 
@@ -307,179 +418,105 @@
           <div id="camposTarjeta" class="space-y-2 mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
             <span class="block text-[11px] font-bold text-blue-800 uppercase">Datos de Tarjeta (Simulación)</span>
             <input type="text" id="tcNumero" placeholder="Número de Tarjeta (16 dígitos)" maxlength="16" class="w-full border rounded p-1.5 text-xs">
-            <div class="grid grid-cols-2 gap-2">
-              <input type="text" id="tcExpiracion" placeholder="MM/AA" maxlength="5" class="border rounded p-1.5 text-xs">
-              <input type="password" id="tcCvc" placeholder="CVC" maxlength="4" class="border rounded p-1.5 text-xs">
-            </div>
           </div>
 
           <div class="bg-slate-900 text-white p-4 rounded mb-4">
-            <div class="flex justify-between text-xs text-slate-400 mb-1">
-              <span>Subtotal Productos:</span>
-              <span id="pedidoSubtotal">$0.00</span>
-            </div>
-            <div class="flex justify-between text-xs text-slate-400 mb-1">
-              <span>Comisión TC (3.5%):</span>
-              <span id="pedidoComision">$0.00</span>
-            </div>
-            <div class="flex justify-between text-sm font-bold text-emerald-400 border-t border-slate-700 pt-2">
-              <span>Total Final a Cobrar:</span>
-              <span id="pedidoTotal">$0.00</span>
-            </div>
+            <div class="flex justify-between text-xs text-slate-400 mb-1"><span>Subtotal Productos:</span><span id="pedidoSubtotal">$0.00</span></div>
+            <div class="flex justify-between text-xs text-slate-400 mb-1"><span>Comisión TC (3.5%):</span><span id="pedidoComision">$0.00</span></div>
+            <div class="flex justify-between text-sm font-bold text-emerald-400 border-t border-slate-700 pt-2"><span>Total Final:</span><span id="pedidoTotal">$0.00</span></div>
           </div>
 
-          <button onclick="procesarPedido()" class="w-full bg-emerald-600 text-white text-xs font-bold py-2.5 rounded hover:bg-emerald-700">
-            🚀 Procesar Cobro & Registrar Pedido
-          </button>
+          <button onclick="procesarPedido()" class="w-full bg-emerald-600 text-white text-xs font-bold py-2.5 rounded hover:bg-emerald-700">🚀 Procesar Cobro & Registrar</button>
         </div>
 
         <div class="lg:col-span-5">
           <div class="flex justify-between items-center mb-4">
-            <h2 class="font-bold text-slate-800 text-sm">2. Historial de Pedidos Guardados</h2>
-            <button onclick="limpiarHistorialPedidos()" class="text-[11px] text-red-600 underline font-semibold">Limpiar Pedidos</button>
+            <h2 class="font-bold text-slate-800 text-sm">2. Historial de Pedidos</h2>
+            <button onclick="limpiarHistorialPedidos()" class="text-[11px] text-red-600 underline font-semibold">Limpiar</button>
           </div>
           <div class="overflow-x-auto border rounded-lg">
             <table class="w-full text-left text-xs">
               <thead>
                 <tr class="bg-slate-100 text-slate-700 border-b">
                   <th class="p-2">Código</th>
-                  <th class="p-2">Cliente / Ítems</th>
-                  <th class="p-2">Pago</th>
+                  <th class="p-2">Cliente</th>
                   <th class="p-2 text-right">Saldo / Total</th>
                 </tr>
               </thead>
-              <tbody id="tablaPedidos" class="divide-y">
-                <tr><td colspan="4" class="p-4 text-center text-slate-400">No hay pedidos registrados.</td></tr>
-              </tbody>
+              <tbody id="tablaPedidos" class="divide-y"></tbody>
             </table>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ==================== MÓDULO 3: FACTURACIÓN MULTI-PEDIDO ==================== -->
-    <div id="moduloFacturacion" class="bg-white p-6 rounded-xl shadow-md border border-slate-200 hidden">
-      <h1 class="text-2xl font-bold text-slate-900 mb-2">Módulo de Facturación Fiscal Multi-Pedido</h1>
-      <p class="text-xs text-slate-500 mb-6">Selecciona uno o varios pedidos con saldo pendiente, ingresa el monto manual a facturar y emite tu comprobante.</p>
+    <!-- ==================== MÓDULO 4: FACTURACIÓN MULTI-PEDIDO ==================== -->
+    <div id="moduloFacturacion" class="modulo-card bg-white p-6 rounded-xl shadow-md border border-slate-200 hidden">
+      <div class="flex justify-between items-center mb-4 pb-2 border-b">
+        <div>
+          <h1 class="text-2xl font-bold text-slate-900">Facturación Fiscal Multi-Pedido</h1>
+          <p class="text-xs text-slate-500">Consolidado y emisión de CFDI.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-xs font-semibold text-slate-600">Tema:</label>
+          <select onchange="cambiarTemaModulo('moduloFacturacion', this.value)" class="border rounded p-1 text-xs">
+            <option value="classic">Clásico</option>
+            <option value="emerald">Esmeralda</option>
+            <option value="dark">Oscuro</option>
+          </select>
+        </div>
+      </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div class="lg:col-span-5 space-y-6">
-          <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
-            <h2 class="font-bold text-slate-800 text-sm mb-3 pb-2 border-b">1. Seleccionar Pedidos y Asignar Monto</h2>
-            
-            <div class="mb-4">
-              <span class="block text-xs font-semibold mb-2 text-slate-700">Pedidos disponibles con saldo pendiente:</span>
-              <div id="listaPedidosFacturables" class="max-h-56 overflow-y-auto border rounded bg-white p-2 space-y-2">
-                <span class="text-xs text-slate-400 block text-center py-2">No hay pedidos pendientes por facturar.</span>
-              </div>
-            </div>
+        <div class="lg:col-span-5 space-y-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
+          <h2 class="font-bold text-slate-800 text-sm border-b pb-2">1. Seleccionar Pedidos con Saldo</h2>
+          <div id="listaPedidosFacturables" class="max-h-48 overflow-y-auto border rounded bg-white p-2 space-y-2"></div>
 
-            <h2 class="font-bold text-slate-800 text-sm mb-3 pb-2 border-b">2. Datos Fiscales del Receptor</h2>
+          <h2 class="font-bold text-slate-800 text-sm border-b pb-2">2. Datos Fiscales</h2>
+          <input type="text" id="facturaRfc" placeholder="RFC Receptor" class="w-full border rounded p-2 text-xs uppercase font-mono">
+          <input type="text" id="facturaRazonSocial" placeholder="Razón Social / Nombre" class="w-full border rounded p-2 text-xs">
 
-            <div class="mb-3">
-              <label class="block text-xs font-semibold mb-1">RFC / ID Fiscal</label>
-              <input type="text" id="facturaRfc" placeholder="ej. XAXX010101000" class="w-full border rounded p-2 text-xs uppercase font-mono">
-            </div>
-
-            <div class="mb-3">
-              <label class="block text-xs font-semibold mb-1">Razón Social / Nombre Fiscal</label>
-              <input type="text" id="facturaRazonSocial" placeholder="Nombre completo o Empresa" class="w-full border rounded p-2 text-xs">
-            </div>
-
-            <div class="grid grid-cols-2 gap-2 mb-3">
-              <div>
-                <label class="block text-xs font-semibold mb-1">Uso de CFDI</label>
-                <select id="facturaUso" class="w-full border rounded p-1.5 text-xs">
-                  <option value="G03 - Gastos en general">G03 - Gastos general</option>
-                  <option value="P01 - Por definir">P01 - Por definir</option>
-                  <option value="G01 - Adquisición mercancías">G01 - Mercancías</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-xs font-semibold mb-1">Régimen Fiscal</label>
-                <select id="facturaRegimen" class="w-full border rounded p-1.5 text-xs">
-                  <option value="601 - General Personas Morales">601 - Morales</option>
-                  <option value="612 - Personas Físicas con Actividad">612 - Físicas Act.</option>
-                  <option value="626 - RESICO">626 - RESICO</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="mb-4">
-              <label class="block text-xs font-semibold mb-1">Correo Electrónico</label>
-              <input type="email" id="facturaEmail" placeholder="cliente@correo.com" class="w-full border rounded p-2 text-xs">
-            </div>
-
-            <button onclick="guardarYEmitirFactura()" class="w-full bg-blue-600 text-white text-xs font-bold py-2.5 rounded hover:bg-blue-700">
-              📄 Emitir & Registrar Factura
-            </button>
+          <div class="grid grid-cols-2 gap-2">
+            <select id="facturaUso" class="border rounded p-1.5 text-xs"><option value="G03 - Gastos en general">G03 - Gastos gral.</option></select>
+            <select id="facturaRegimen" class="border rounded p-1.5 text-xs"><option value="601 - Morales">601 - Morales</option></select>
           </div>
 
-          <!-- HISTORIAL DE FACTURAS -->
-          <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
-            <div class="flex justify-between items-center mb-3 pb-2 border-b">
-              <h2 class="font-bold text-slate-800 text-sm">📋 Facturas Emitidas (Historial)</h2>
-              <button onclick="limpiarHistorialFacturas()" class="text-[11px] text-red-600 underline font-semibold">Limpiar Facturas</button>
-            </div>
-            <div id="historialFacturasLista" class="max-h-60 overflow-y-auto border rounded bg-white p-2 space-y-2 text-xs">
-              <span class="text-xs text-slate-400 block text-center py-2">No hay facturas guardadas.</span>
-            </div>
-          </div>
+          <button onclick="guardarYEmitirFactura()" class="w-full bg-blue-600 text-white text-xs font-bold py-2.5 rounded hover:bg-blue-700">📄 Emitir Factura</button>
         </div>
 
         <div class="lg:col-span-7">
           <div class="flex justify-between items-center mb-3">
-            <h2 class="font-bold text-slate-800 text-sm">3. Vista Previa de Factura Consolidada</h2>
-            <button onclick="window.print()" class="bg-slate-800 text-white text-xs px-3 py-1 rounded font-bold hover:bg-slate-700">🖨️ Imprimir / Guardar PDF</button>
+            <h2 class="font-bold text-slate-800 text-sm">3. Vista Previa CFDI Consolidado</h2>
+            <button onclick="window.print()" class="bg-slate-800 text-white text-xs px-3 py-1 rounded font-bold hover:bg-slate-700">🖨️ Imprimir PDF</button>
           </div>
 
-          <div id="vistaFacturaDocumento" class="border border-slate-300 p-6 rounded-lg bg-white shadow-sm text-xs space-y-4">
+          <div id="vistaFacturaDocumento" class="border border-slate-300 p-6 rounded-lg bg-white text-xs space-y-4">
             <div class="flex justify-between border-b pb-4">
               <div>
-                <h3 class="font-bold text-base text-slate-900">FACTURA ELECTRONICA CONSOLIDADA</h3>
+                <h3 class="font-bold text-base text-slate-900">FACTURA ELECTRÓNICA</h3>
                 <span class="text-slate-500 font-mono block" id="facFolio">FOLIO: FAC-MULT-001</span>
-                <span class="text-[11px] text-blue-700 font-bold block mt-1" id="facPedidosIncluidos">Pedidos Incluidos: Ninguno</span>
               </div>
               <div class="text-right">
-                <span class="font-bold text-slate-800 block">EMISOR EJEMPLO S.A. DE C.V.</span>
-                <span class="text-slate-500 block">RFC: EME120304XXX</span>
-                <span class="text-slate-500 block" id="facFecha">Fecha: DD/MM/AAAA</span>
+                <span class="font-bold block">EMISOR S.A. DE C.V.</span>
+                <span class="text-slate-500 block" id="facFecha">Fecha: --</span>
               </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded border">
-              <div>
-                <span class="block text-[10px] text-slate-400 font-bold uppercase">Receptor (Cliente)</span>
-                <span id="facReceptorNombre" class="font-bold text-slate-800 block">SELECCIONA AL MENOS UN PEDIDO</span>
-                <span id="facReceptorRfc" class="font-mono text-slate-600 block">RFC: -</span>
-              </div>
-              <div>
-                <span class="block text-[10px] text-slate-400 font-bold uppercase">Detalles Fiscales</span>
-                <span id="facReceptorUso" class="block text-slate-600">Uso: -</span>
-                <span id="facReceptorRegimen" class="block text-slate-600">Régimen: -</span>
-              </div>
+            <div class="bg-slate-50 p-3 rounded border">
+              <span id="facReceptorNombre" class="font-bold text-slate-800 block">SELECCIONA PEDIDOS</span>
+              <span id="facReceptorRfc" class="font-mono text-slate-600 block">RFC: -</span>
             </div>
 
-            <div>
-              <table class="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr class="border-b bg-slate-100 text-slate-700">
-                    <th class="p-2">Pedido</th>
-                    <th class="p-2">Concepto / Descripción</th>
-                    <th class="p-2 text-right">Monto Aplicado</th>
-                  </tr>
-                </thead>
-                <tbody id="facTablaConceptos" class="divide-y">
-                  <tr><td colspan="3" class="p-4 text-center text-slate-400">Selecciona al menos un pedido para consolidar.</td></tr>
-                </tbody>
-              </table>
-            </div>
+            <table class="w-full text-left text-xs">
+              <thead><tr class="border-b bg-slate-100"><th class="p-2">Pedido</th><th class="p-2">Concepto</th><th class="p-2 text-right">Monto</th></tr></thead>
+              <tbody id="facTablaConceptos" class="divide-y"></tbody>
+            </table>
 
             <div class="border-t pt-3 flex justify-end">
-              <div class="w-56 space-y-1 text-right">
-                <div class="flex justify-between text-slate-600"><span>Subtotal Base:</span><span id="facSubtotal">$0.00</span></div>
-                <div class="flex justify-between text-slate-600"><span>IVA (16%):</span><span id="facIva">$0.00</span></div>
-                <div class="flex justify-between font-bold text-sm text-slate-900 border-t pt-1"><span>Total Facturado:</span><span id="facTotal">$0.00</span></div>
+              <div class="w-48 text-right space-y-1">
+                <div class="flex justify-between"><span>Subtotal:</span><span id="facSubtotal">$0.00</span></div>
+                <div class="flex justify-between"><span>IVA (16%):</span><span id="facIva">$0.00</span></div>
+                <div class="flex justify-between font-bold text-slate-900 border-t pt-1"><span>Total:</span><span id="facTotal">$0.00</span></div>
               </div>
             </div>
           </div>
@@ -487,196 +524,448 @@
       </div>
     </div>
 
-    <!-- ==================== MÓDULO 4: REPORTES Y ANÁLISIS FINANCIERO ==================== -->
-    <div id="moduloReportes" class="bg-white p-6 rounded-xl shadow-md border border-slate-200 hidden">
-      <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-4 border-b gap-4">
+    <!-- ==================== MÓDULO 5: INSUMOS, GASTOS & CxP (UEPS) ==================== -->
+    <div id="moduloInsumosCxP" class="modulo-card bg-white p-6 rounded-xl shadow-md border border-slate-200 hidden">
+      <div class="flex justify-between items-center mb-4 pb-2 border-b">
         <div>
-          <h1 class="text-2xl font-bold text-slate-900">Análisis y Reportes Financieros</h1>
-          <p class="text-xs text-slate-500">Selecciona el tipo de informe para visualizar métricas clave.</p>
+          <h1 class="text-2xl font-bold text-slate-900">Materias Primas, Insumos, Gastos & CxP</h1>
+          <p class="text-xs text-slate-500">Valuación Kardex UEPS (LIFO), Cuentas por Pagar y Vales de Salida con Facturas Adjuntas.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-xs font-semibold text-slate-600">Tema:</label>
+          <select onchange="cambiarTemaModulo('moduloInsumosCxP', this.value)" class="border rounded p-1 text-xs">
+            <option value="classic">Clásico</option>
+            <option value="emerald">Esmeralda</option>
+            <option value="dark">Oscuro</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
+        <div class="lg:col-span-5 bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+          <h2 class="font-bold text-slate-800 text-sm border-b pb-2">1. Entrada Kardex & Deuda CxP</h2>
+          <input type="text" id="cxpProveedor" placeholder="Proveedor / Acreedor" class="w-full border rounded p-2 text-xs">
+          <div class="grid grid-cols-2 gap-2">
+            <select id="cxpTipoItem" class="border rounded p-1.5 text-xs"><option value="Materia Prima">Materia Prima</option><option value="Gasto General">Gasto General</option></select>
+            <input type="text" id="cxpInsumoNombre" placeholder="Concepto / Insumo" class="border rounded p-2 text-xs">
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <input type="number" id="cxpCantidad" value="10" placeholder="Cant." class="border rounded p-2 text-xs">
+            <input type="number" id="cxpCostoUnit" value="25.00" placeholder="Costo U." class="border rounded p-2 text-xs">
+            <input type="date" id="cxpFechaCompra" class="border rounded p-1.5 text-xs">
+          </div>
+          <button onclick="registrarEntradaEInsumoCxP()" class="w-full bg-emerald-600 text-white font-bold text-xs py-2.5 rounded hover:bg-emerald-700">📥 Registrar en Kardex UEPS & Generar CxP</button>
+        </div>
+
+        <div class="lg:col-span-7 bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+          <h2 class="font-bold text-slate-800 text-sm border-b pb-2">2. Solicitar Vale de Pago a Proveedor + Factura</h2>
+          <div class="grid grid-cols-2 gap-3">
+            <select id="selectCxpPendiente" onchange="seleccionarCxpParaVale()" class="w-full border rounded p-2 text-xs bg-white font-semibold"><option value="">-- Seleccionar CxP --</option></select>
+            <input type="number" id="valeMontoPago" placeholder="Monto Solicitado" class="border rounded p-2 text-xs font-bold text-blue-700">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <input type="text" id="valeConcepto" placeholder="Motivo o detalle del vale" class="border rounded p-2 text-xs">
+            <input type="file" id="valeArchivoFactura" accept=".pdf,.xml,.jpg,.png" class="text-xs border rounded bg-white p-1">
+          </div>
+          <button onclick="generarValeSalida()" class="w-full bg-blue-600 text-white font-bold text-xs py-2.5 rounded hover:bg-blue-700">📑 Emitir Vale por Autorizar</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-6 bg-slate-50 p-4 rounded-lg border border-slate-200">
+          <div class="flex justify-between items-center mb-3">
+            <h2 class="font-bold text-slate-800 text-sm">Kardex UEPS (LIFO)</h2>
+            <button onclick="simularSalidaUEPS()" class="text-xs bg-slate-800 text-white font-bold px-2 py-1 rounded">Consumir UEPS</button>
+          </div>
+          <div class="overflow-x-auto border rounded bg-white">
+            <table class="w-full text-left text-xs">
+              <thead><tr class="bg-slate-100 border-b"><th class="p-2">Insumo</th><th class="p-2">Lote</th><th class="p-2 text-center">Cant.</th><th class="p-2 text-right">Costo U.</th></tr></thead>
+              <tbody id="tablaKardexUEPS" class="divide-y"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="lg:col-span-6 bg-slate-50 p-4 rounded-lg border border-slate-200">
+          <h2 class="font-bold text-slate-800 text-sm mb-3">Vales de Salida & Estado</h2>
+          <div class="overflow-x-auto border rounded bg-white">
+            <table class="w-full text-left text-xs">
+              <thead><tr class="bg-slate-100 border-b"><th class="p-2">Folio</th><th class="p-2">Proveedor</th><th class="p-2 text-right">Monto</th><th class="p-2 text-center">Estado</th><th class="p-2 text-center">Acción</th></tr></thead>
+              <tbody id="tablaValesSalida" class="divide-y"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== MÓDULO 6: TESORERÍA & CONCILIACIÓN BANCARIA ==================== -->
+    <div id="moduloTesoreria" class="modulo-card bg-white p-6 rounded-xl shadow-md border border-slate-200 hidden">
+      <div class="flex justify-between items-center mb-4 pb-2 border-b">
+        <div>
+          <h1 class="text-2xl font-bold text-slate-900">Tesorería & Conciliación Bancaria</h1>
+          <p class="text-xs text-slate-500">Autorización de Entradas, Salidas, Movimientos Manuales y Carga de Extracto Bancario.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-xs font-semibold text-slate-600">Tema:</label>
+          <select onchange="cambiarTemaModulo('moduloTesoreria', this.value)" class="border rounded p-1 text-xs">
+            <option value="classic">Clásico</option>
+            <option value="emerald">Esmeralda</option>
+            <option value="purple">Púrpura</option>
+            <option value="dark">Oscuro</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
+        <div class="lg:col-span-5 bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+          <h2 class="font-bold text-slate-800 text-sm border-b pb-2">1. Registrar Movimiento Manual / Tesorería</h2>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs font-semibold mb-1">Tipo Movimiento</label>
+              <select id="tesoreriaTipo" class="w-full border rounded p-2 text-xs font-bold">
+                <option value="Entrada (Depósito Cliente)">🟢 Entrada (Depósito Cliente)</option>
+                <option value="Salida (Retiro Proveedor)">🔴 Salida (Retiro Proveedor)</option>
+                <option value="Ajuste Manual (+)">🟢 Ajuste Manual (+)</option>
+                <option value="Ajuste Manual (-)">🔴 Ajuste Manual (-)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold mb-1">Vía de Pago / Cuenta</label>
+              <select id="tesoreriaVia" class="w-full border rounded p-2 text-xs font-bold">
+                <option value="Bancaria">🏦 Bancaria (Transferencia / TC)</option>
+                <option value="Efectivo">💵 Efectivo (Caja Chica)</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold mb-1">Concepto / Referencia</label>
+            <input type="text" id="tesoreriaConcepto" placeholder="Ej. Depósito Pedido PED-1002" class="w-full border rounded p-2 text-xs">
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs font-semibold mb-1">Monto ($)</label>
+              <input type="number" id="tesoreriaMonto" placeholder="0.00" step="0.01" class="w-full border rounded p-2 text-xs font-bold text-blue-700">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold mb-1">Fecha Movimiento</label>
+              <input type="date" id="tesoreriaFecha" class="w-full border rounded p-1.5 text-xs">
+            </div>
+          </div>
+
+          <button onclick="registrarMovimientoTesoreria()" class="w-full bg-blue-600 text-white font-bold text-xs py-2.5 rounded hover:bg-blue-700">
+            💾 Registrar & Autorizar Movimiento
+          </button>
+        </div>
+
+        <div class="lg:col-span-7 bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+          <h2 class="font-bold text-slate-800 text-sm border-b pb-2">2. Conciliación Bancaria Automática (Subir Excel)</h2>
+          <p class="text-xs text-slate-500">Carga un archivo Excel (.xlsx / .csv) con columnas: <code>Fecha</code>, <code>Concepto</code> y <code>Monto</code> para comparar automáticamente contra Tesorería.</p>
+
+          <div class="flex items-center gap-2">
+            <input type="file" id="archivoExcelBanco" accept=".xlsx, .xls, .csv" class="w-full border rounded bg-white p-1.5 text-xs">
+            <button onclick="procesarExcelBancario()" class="bg-emerald-600 text-white font-bold text-xs px-4 py-2 rounded hover:bg-emerald-700 whitespace-nowrap">
+              📊 Cargar & Conciliar
+            </button>
+          </div>
+
+          <div id="resumenConciliacion" class="hidden p-3 bg-white border rounded text-xs space-y-1">
+            <span class="font-bold text-slate-800 block">Resultado de Conciliación Bancaria:</span>
+            <div class="flex justify-between text-slate-600"><span>Movimientos Internos Registrados:</span><span id="txtTotalInternos">0</span></div>
+            <div class="flex justify-between text-emerald-600 font-bold"><span>Movimientos Conciliados Exactos:</span><span id="txtTotalConciliados">0</span></div>
+            <div class="flex justify-between text-amber-600 font-bold"><span>Pendientes de Aclaración:</span><span id="txtTotalPendientes">0</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="border rounded-lg p-4 bg-slate-50">
+          <h2 class="font-bold text-slate-800 text-sm mb-3">🏦 Histórico Bancarizado (Cuentas de Banco)</h2>
+          <div class="overflow-x-auto bg-white border rounded">
+            <table class="w-full text-left text-xs">
+              <thead><tr class="bg-slate-100 border-b"><th class="p-2">Fecha</th><th class="p-2">Concepto</th><th class="p-2 text-right">Monto</th><th class="p-2 text-center">Conciliado</th></tr></thead>
+              <tbody id="tablaBancarizado" class="divide-y"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="border rounded-lg p-4 bg-slate-50">
+          <h2 class="font-bold text-slate-800 text-sm mb-3">💵 Histórico Efectivo (Caja Chica / Operativa)</h2>
+          <div class="overflow-x-auto bg-white border rounded">
+            <table class="w-full text-left text-xs">
+              <thead><tr class="bg-slate-100 border-b"><th class="p-2">Fecha</th><th class="p-2">Concepto</th><th class="p-2 text-right">Monto</th><th class="p-2 text-center">Estatus</th></tr></thead>
+              <tbody id="tablaEfectivo" class="divide-y"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== MÓDULO 7: CONTABILIDAD & ACTIVOS FIJOS ==================== -->
+    <div id="moduloContabilidad" class="modulo-card bg-white p-6 rounded-xl shadow-md border border-slate-200 hidden">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 pb-2 border-b gap-3">
+        <div>
+          <h1 class="text-2xl font-bold text-slate-900">Módulo de Contabilidad General & Activos Fijos</h1>
+          <p class="text-xs text-slate-500">Pólizas, Catálogo de Activos Fijos con Depreciación y Bloqueo por Cierre de Mes.</p>
         </div>
         
-        <div class="flex bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-bold">
-          <button id="subtabProductosBtn" onclick="cambiarSubtabReporte('productos')" class="px-3 py-1.5 rounded-md bg-white shadow-sm text-blue-600">
-            📦 Productos
-          </button>
-          <button id="subtabPedidosBtn" onclick="cambiarSubtabReporte('pedidos')" class="px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900">
-            📑 Pedidos (Ventas)
-          </button>
-          <button id="subtabFacturasBtn" onclick="cambiarSubtabReporte('facturas')" class="px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900">
-            📄 Facturas Fiscales
+        <div class="flex items-center gap-2">
+          <label class="text-xs font-semibold text-slate-600">Tema:</label>
+          <select onchange="cambiarTemaModulo('moduloContabilidad', this.value)" class="border rounded p-1 text-xs">
+            <option value="classic">Clásico</option>
+            <option value="emerald">Esmeralda</option>
+            <option value="purple">Púrpura</option>
+            <option value="dark">Oscuro</option>
+          </select>
+          <button id="btnCierreMes" onclick="toggleBloqueoCierreMes()" class="bg-amber-600 text-white font-bold text-xs px-3 py-1.5 rounded hover:bg-amber-700 whitespace-nowrap">
+            🔒 Bloquear por Cierre de Mes
           </button>
         </div>
       </div>
 
-      <!-- VISTA 1: REPORTE DE PRODUCTOS -->
+      <div id="bannerCierreMes" class="hidden mb-4 p-2 bg-red-100 border border-red-300 text-red-800 text-xs font-bold rounded text-center">
+        🔒 ATENCIÓN: El periodo contable actual se encuentra BLOQUEADO por Cierre de Mes. No se permiten nuevos registros o modificaciones contables.
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
+        <div class="lg:col-span-5 bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+          <h2 class="font-bold text-slate-800 text-sm border-b pb-2">1. Alta en Catálogo de Activos Fijos</h2>
+          <div>
+            <label class="block text-xs font-semibold mb-1">Nombre del Activo</label>
+            <input type="text" id="activoNombre" placeholder="Ej. Troqueladora Industrial H-200" class="w-full border rounded p-2 text-xs">
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs font-semibold mb-1">Categoría</label>
+              <select id="activoCategoria" class="w-full border rounded p-1.5 text-xs">
+                <option value="Maquinaria y Equipo (10%)">Maquinaria (10% anual)</option>
+                <option value="Equipo de Cómputo (30%)">Cómputo (30% anual)</option>
+                <option value="Equipo de Transporte (25%)">Transporte (25% anual)</option>
+                <option value="Mobiliario y Oficina (10%)">Mobiliario (10% anual)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold mb-1">Monto Original Compra ($)</label>
+              <input type="number" id="activoMOI" placeholder="0.00" step="0.01" class="w-full border rounded p-2 text-xs font-bold text-blue-700">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs font-semibold mb-1">Fecha de Adquisición</label>
+              <input type="date" id="activoFecha" class="w-full border rounded p-1.5 text-xs">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold mb-1">Meses de Uso</label>
+              <input type="number" id="activoMesesUso" value="12" min="1" class="w-full border rounded p-2 text-xs">
+            </div>
+          </div>
+
+          <button onclick="registrarActivoFijo()" class="w-full bg-emerald-600 text-white font-bold text-xs py-2.5 rounded hover:bg-emerald-700">
+            🏢 Registrar Activo & Calcular Depreciación
+          </button>
+        </div>
+
+        <div class="lg:col-span-7 bg-slate-50 p-4 rounded-lg border border-slate-200">
+          <h2 class="font-bold text-slate-800 text-sm border-b pb-2 mb-3">2. Pólizas & Libro Diario Contable</h2>
+          <div class="overflow-x-auto bg-white border rounded">
+            <table class="w-full text-left text-xs">
+              <thead><tr class="bg-slate-100 border-b"><th class="p-2">Póliza / Fecha</th><th class="p-2">Concepto</th><th class="p-2 text-right">Debe ($)</th><th class="p-2 text-right">Haber ($)</th></tr></thead>
+              <tbody id="tablaPolizasContables" class="divide-y"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+        <h2 class="font-bold text-slate-800 text-sm mb-3">3. Catálogo de Activos Fijos & Depreciación Acumulada</h2>
+        <div class="overflow-x-auto bg-white border rounded">
+          <table class="w-full text-left text-xs">
+            <thead>
+              <tr class="bg-slate-100 text-slate-700 border-b">
+                <th class="p-2">Código</th>
+                <th class="p-2">Activo / Categoría</th>
+                <th class="p-2">Fecha Compra</th>
+                <th class="p-2 text-right">Monto Original (MOI)</th>
+                <th class="p-2 text-right">Depreciación Mensual</th>
+                <th class="p-2 text-right">Deprec. Acumulada</th>
+                <th class="p-2 text-right">Valor Neto en Libros</th>
+              </tr>
+            </thead>
+            <tbody id="tablaActivosFijos" class="divide-y"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== MÓDULO 8: NÓMINAS & PLANTILLA LABORAL ==================== -->
+    <div id="moduloNominas" class="modulo-card bg-white p-6 rounded-xl shadow-md border border-slate-200 hidden">
+      <div class="flex justify-between items-center mb-4 pb-2 border-b">
+        <div>
+          <h1 class="text-2xl font-bold text-slate-900">Módulo de Nóminas & Control de Personal</h1>
+          <p class="text-xs text-slate-500">Cálculo de Salario, IMSS, ISR, Percepciones y Deducciones para Empleados.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-xs font-semibold text-slate-600">Tema:</label>
+          <select onchange="cambiarTemaModulo('moduloNominas', this.value)" class="border rounded p-1 text-xs">
+            <option value="classic">Clásico</option>
+            <option value="emerald">Esmeralda</option>
+            <option value="purple">Púrpura</option>
+            <option value="dark">Oscuro</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
+        <div class="lg:col-span-5 bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+          <h2 class="font-bold text-slate-800 text-sm border-b pb-2">1. Alta de Empleado</h2>
+          <input type="text" id="nomEmpleadoNombre" placeholder="Nombre completo del trabajador" class="w-full border rounded p-2 text-xs">
+          <div class="grid grid-cols-2 gap-2">
+            <input type="text" id="nomEmpleadoPuesto" placeholder="Puesto / Área" class="border rounded p-2 text-xs">
+            <input type="number" id="nomSalarioDiario" placeholder="Salario Diario ($)" step="0.01" class="border rounded p-2 text-xs font-bold text-blue-700">
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs font-semibold mb-1">Días Trab. (Quincena)</label>
+              <input type="number" id="nomDiasTrabajados" value="15" class="border rounded p-1.5 text-xs w-full">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold mb-1">Horas Extra ($)</label>
+              <input type="number" id="nomHorasExtra" value="0.00" step="0.01" class="border rounded p-1.5 text-xs w-full">
+            </div>
+          </div>
+          <button onclick="registrarEmpleadoYNomina()" class="w-full bg-blue-600 text-white font-bold text-xs py-2.5 rounded hover:bg-blue-700">
+            👥 Registrar Empleado & Generar Recibo
+          </button>
+        </div>
+
+        <div class="lg:col-span-7 bg-slate-50 p-4 rounded-lg border border-slate-200">
+          <h2 class="font-bold text-slate-800 text-sm border-b pb-2 mb-3">2. Pre-Nómina y Recibos Generados</h2>
+          <div class="overflow-x-auto bg-white border rounded">
+            <table class="w-full text-left text-xs">
+              <thead>
+                <tr class="bg-slate-100 border-b">
+                  <th class="p-2">Empleado</th>
+                  <th class="p-2 text-right">S. Base</th>
+                  <th class="p-2 text-right">Percepciones</th>
+                  <th class="p-2 text-right">Deducciones (ISR/IMSS)</th>
+                  <th class="p-2 text-right">Neto a Pagar</th>
+                  <th class="p-2 text-center">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tablaNominas" class="divide-y"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== MÓDULO 9: REPORTES Y ANÁLISIS FINANCIERO ==================== -->
+    <div id="moduloReportes" class="modulo-card bg-white p-6 rounded-xl shadow-md border border-slate-200 hidden">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-4 border-b gap-4">
+        <div>
+          <h1 class="text-2xl font-bold text-slate-900">Análisis y Reportes Financieros</h1>
+          <p class="text-xs text-slate-500">Métricas clave e informes consolidados.</p>
+        </div>
+        
+        <div class="flex bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-bold">
+          <button id="subtabProductosBtn" onclick="cambiarSubtabReporte('productos')" class="px-3 py-1.5 rounded-md bg-white shadow-sm text-blue-600">📦 Productos</button>
+          <button id="subtabPedidosBtn" onclick="cambiarSubtabReporte('pedidos')" class="px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900">📑 Pedidos</button>
+          <button id="subtabFacturasBtn" onclick="cambiarSubtabReporte('facturas')" class="px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900">📄 Facturas</button>
+        </div>
+      </div>
+
       <div id="vistaReporteProductos">
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div class="bg-slate-50 border p-4 rounded-lg">
-            <span class="text-xs font-semibold text-slate-500 uppercase">Productos en Catálogo</span>
-            <span id="kpiTotalProductos" class="block text-2xl font-bold text-slate-800 mt-1">0</span>
-          </div>
-          <div class="bg-blue-50 border border-blue-100 p-4 rounded-lg">
-            <span class="text-xs font-semibold text-blue-600 uppercase">Costo Unitario Promedio</span>
-            <span id="kpiCostoProm" class="block text-2xl font-bold text-blue-900 mt-1">$0.00</span>
-          </div>
-          <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-lg">
-            <span class="text-xs font-semibold text-emerald-600 uppercase">Precio Unitario Promedio</span>
-            <span id="kpiPrecioProm" class="block text-2xl font-bold text-emerald-900 mt-1">$0.00</span>
-          </div>
-          <div class="bg-amber-50 border border-amber-100 p-4 rounded-lg">
-            <span class="text-xs font-semibold text-amber-600 uppercase">Margen Promedio</span>
-            <span id="kpiMargenProm" class="block text-2xl font-bold text-amber-900 mt-1">0%</span>
-          </div>
+          <div class="bg-slate-50 border p-4 rounded-lg"><span class="text-xs font-semibold text-slate-500 uppercase">Productos</span><span id="kpiTotalProductos" class="block text-2xl font-bold text-slate-800 mt-1">0</span></div>
+          <div class="bg-blue-50 border border-blue-100 p-4 rounded-lg"><span class="text-xs font-semibold text-blue-600 uppercase">Costo Unit. Promedio</span><span id="kpiCostoProm" class="block text-2xl font-bold text-blue-900 mt-1">$0.00</span></div>
+          <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-lg"><span class="text-xs font-semibold text-emerald-600 uppercase">Precio Unit. Promedio</span><span id="kpiPrecioProm" class="block text-2xl font-bold text-emerald-900 mt-1">$0.00</span></div>
+          <div class="bg-amber-50 border border-amber-100 p-4 rounded-lg"><span class="text-xs font-semibold text-amber-600 uppercase">Margen Promedio</span><span id="kpiMargenProm" class="block text-2xl font-bold text-amber-900 mt-1">0%</span></div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div class="border p-4 rounded-lg bg-white shadow-sm">
-            <h3 class="text-sm font-bold text-slate-700 mb-4 text-center">Comparativo Costo vs. Precio (Lote)</h3>
-            <div class="h-64"><canvas id="chartComparativo"></canvas></div>
-          </div>
-          <div class="border p-4 rounded-lg bg-white shadow-sm">
-            <h3 class="text-sm font-bold text-slate-700 mb-4 text-center">Estructura Global de Costos</h3>
-            <div class="h-64 flex justify-center"><canvas id="chartEstructuraCostos"></canvas></div>
-          </div>
+          <div class="border p-4 rounded-lg bg-white shadow-sm"><h3 class="text-sm font-bold text-slate-700 mb-4 text-center">Comparativo Costo vs. Precio</h3><div class="h-64"><canvas id="chartComparativo"></canvas></div></div>
+          <div class="border p-4 rounded-lg bg-white shadow-sm"><h3 class="text-sm font-bold text-slate-700 mb-4 text-center">Estructura Global de Costos</h3><div class="h-64 flex justify-center"><canvas id="chartEstructuraCostos"></canvas></div></div>
         </div>
 
-        <h2 class="text-lg font-bold text-slate-800 mb-3">Catálogo de Productos y Rentabilidad</h2>
         <div class="overflow-x-auto border rounded-lg">
           <table class="w-full text-left text-sm border-collapse">
-            <thead>
-              <tr class="bg-slate-100 text-slate-700 border-b">
-                <th class="p-2">Producto</th>
-                <th class="p-2 text-center">Lote</th>
-                <th class="p-2 text-right">Costo Lote</th>
-                <th class="p-2 text-right">Precio Lote</th>
-                <th class="p-2 text-right">Ganancia / Lote</th>
-                <th class="p-2 text-center">Margen %</th>
-              </tr>
-            </thead>
+            <thead><tr class="bg-slate-100 text-slate-700 border-b"><th class="p-2">Producto</th><th class="p-2 text-center">Lote</th><th class="p-2 text-right">Costo Lote</th><th class="p-2 text-right">Precio Lote</th><th class="p-2 text-right">Ganancia</th><th class="p-2 text-center">Margen %</th></tr></thead>
             <tbody id="tablaReporteProductosDetalle" class="divide-y"></tbody>
           </table>
         </div>
       </div>
 
-      <!-- VISTA 2: REPORTE DE PEDIDOS -->
       <div id="vistaReportePedidos" class="hidden">
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div class="bg-slate-50 border p-4 rounded-lg">
-            <span class="text-xs font-semibold text-slate-500 uppercase">Total Pedidos Realizados</span>
-            <span id="kpiTotalPedidosCount" class="block text-2xl font-bold text-slate-800 mt-1">0</span>
-          </div>
-          <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-lg">
-            <span class="text-xs font-semibold text-emerald-600 uppercase">Ventas Totales Cobradas</span>
-            <span id="kpiTotalVentasCobrada" class="block text-2xl font-bold text-emerald-900 mt-1">$0.00</span>
-          </div>
-          <div class="bg-blue-50 border border-blue-100 p-4 rounded-lg">
-            <span class="text-xs font-semibold text-blue-600 uppercase">Cobrado con Tarjeta (TC)</span>
-            <span id="kpiVentasTC" class="block text-2xl font-bold text-blue-900 mt-1">$0.00</span>
-          </div>
-          <div class="bg-purple-50 border border-purple-100 p-4 rounded-lg">
-            <span class="text-xs font-semibold text-purple-600 uppercase">Comisiones TC (3.5%)</span>
-            <span id="kpiComisionesTC" class="block text-2xl font-bold text-purple-900 mt-1">$0.00</span>
-          </div>
+          <div class="bg-slate-50 border p-4 rounded-lg"><span class="text-xs font-semibold text-slate-500 uppercase">Pedidos</span><span id="kpiTotalPedidosCount" class="block text-2xl font-bold text-slate-800 mt-1">0</span></div>
+          <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-lg"><span class="text-xs font-semibold text-emerald-600 uppercase">Ventas Totales</span><span id="kpiTotalVentasCobrada" class="block text-2xl font-bold text-emerald-900 mt-1">$0.00</span></div>
+          <div class="bg-blue-50 border border-blue-100 p-4 rounded-lg"><span class="text-xs font-semibold text-blue-600 uppercase">Cobrado con Tarjeta</span><span id="kpiVentasTC" class="block text-2xl font-bold text-blue-900 mt-1">$0.00</span></div>
+          <div class="bg-purple-50 border border-purple-100 p-4 rounded-lg"><span class="text-xs font-semibold text-purple-600 uppercase">Comisiones TC (3.5%)</span><span id="kpiComisionesTC" class="block text-2xl font-bold text-purple-900 mt-1">$0.00</span></div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div class="border p-4 rounded-lg bg-white shadow-sm">
-            <h3 class="text-sm font-bold text-slate-700 mb-4 text-center">Ventas Cobradas por Método de Pago</h3>
-            <div class="h-64 flex justify-center"><canvas id="chartMetodosPago"></canvas></div>
-          </div>
-          <div class="border p-4 rounded-lg bg-white shadow-sm">
-            <h3 class="text-sm font-bold text-slate-700 mb-4 text-center">Ingresos por Pedido ($)</h3>
-            <div class="h-64"><canvas id="chartVentasPorPedido"></canvas></div>
-          </div>
+          <div class="border p-4 rounded-lg bg-white shadow-sm"><h3 class="text-sm font-bold text-slate-700 mb-4 text-center">Ventas por Método de Pago</h3><div class="h-64 flex justify-center"><canvas id="chartMetodosPago"></canvas></div></div>
+          <div class="border p-4 rounded-lg bg-white shadow-sm"><h3 class="text-sm font-bold text-slate-700 mb-4 text-center">Ingresos por Pedido ($)</h3><div class="h-64"><canvas id="chartVentasPorPedido"></canvas></div></div>
         </div>
 
-        <h2 class="text-lg font-bold text-slate-800 mb-3">Historial Financiero de Pedidos</h2>
         <div class="overflow-x-auto border rounded-lg">
           <table class="w-full text-left text-sm border-collapse">
-            <thead>
-              <tr class="bg-slate-100 text-slate-700 border-b">
-                <th class="p-2">Fecha / Código</th>
-                <th class="p-2">Cliente</th>
-                <th class="p-2">Forma de Pago</th>
-                <th class="p-2 text-right">Subtotal</th>
-                <th class="p-2 text-right">Comisión TC</th>
-                <th class="p-2 text-right">Total Cobrado</th>
-              </tr>
-            </thead>
+            <thead><tr class="bg-slate-100 text-slate-700 border-b"><th class="p-2">Fecha / Código</th><th class="p-2">Cliente</th><th class="p-2">Forma de Pago</th><th class="p-2 text-right">Subtotal</th><th class="p-2 text-right">Comisión TC</th><th class="p-2 text-right">Total Cobrado</th></tr></thead>
             <tbody id="tablaReportePedidosDetalle" class="divide-y"></tbody>
           </table>
         </div>
       </div>
 
-      <!-- VISTA 3: REPORTE DE FACTURAS -->
       <div id="vistaReporteFacturas" class="hidden">
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div class="bg-slate-50 border p-4 rounded-lg">
-            <span class="text-xs font-semibold text-slate-500 uppercase">Facturas Emitidas</span>
-            <span id="kpiTotalFacturasCount" class="block text-2xl font-bold text-slate-800 mt-1">0</span>
-          </div>
-          <div class="bg-blue-50 border border-blue-100 p-4 rounded-lg">
-            <span class="text-xs font-semibold text-blue-600 uppercase">Subtotal Base Facturado</span>
-            <span id="kpiSubtotalFacturado" class="block text-2xl font-bold text-blue-900 mt-1">$0.00</span>
-          </div>
-          <div class="bg-purple-50 border border-purple-100 p-4 rounded-lg">
-            <span class="text-xs font-semibold text-purple-600 uppercase">IVA Recaudado (16%)</span>
-            <span id="kpiIvaFacturado" class="block text-2xl font-bold text-purple-900 mt-1">$0.00</span>
-          </div>
-          <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-lg">
-            <span class="text-xs font-semibold text-emerald-600 uppercase">Total Facturado</span>
-            <span id="kpiTotalFacturado" class="block text-2xl font-bold text-emerald-900 mt-1">$0.00</span>
-          </div>
+          <div class="bg-slate-50 border p-4 rounded-lg"><span class="text-xs font-semibold text-slate-500 uppercase">Facturas Emitidas</span><span id="kpiTotalFacturasCount" class="block text-2xl font-bold text-slate-800 mt-1">0</span></div>
+          <div class="bg-blue-50 border border-blue-100 p-4 rounded-lg"><span class="text-xs font-semibold text-blue-600 uppercase">Subtotal Base</span><span id="kpiSubtotalFacturado" class="block text-2xl font-bold text-blue-900 mt-1">$0.00</span></div>
+          <div class="bg-purple-50 border border-purple-100 p-4 rounded-lg"><span class="text-xs font-semibold text-purple-600 uppercase">IVA Recaudado (16%)</span><span id="kpiIvaFacturado" class="block text-2xl font-bold text-purple-900 mt-1">$0.00</span></div>
+          <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-lg"><span class="text-xs font-semibold text-emerald-600 uppercase">Total Facturado</span><span id="kpiTotalFacturado" class="block text-2xl font-bold text-emerald-900 mt-1">$0.00</span></div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div class="border p-4 rounded-lg bg-white shadow-sm">
-            <h3 class="text-sm font-bold text-slate-700 mb-4 text-center">Estructura Fiscal (Subtotal vs IVA)</h3>
-            <div class="h-64 flex justify-center"><canvas id="chartEstructuraFacturas"></canvas></div>
-          </div>
-          <div class="border p-4 rounded-lg bg-white shadow-sm">
-            <h3 class="text-sm font-bold text-slate-700 mb-4 text-center">Montos Totales por Factura ($)</h3>
-            <div class="h-64"><canvas id="chartMontosFacturas"></canvas></div>
-          </div>
+          <div class="border p-4 rounded-lg bg-white shadow-sm"><h3 class="text-sm font-bold text-slate-700 mb-4 text-center">Estructura Fiscal (Subtotal vs IVA)</h3><div class="h-64 flex justify-center"><canvas id="chartEstructuraFacturas"></canvas></div></div>
+          <div class="border p-4 rounded-lg bg-white shadow-sm"><h3 class="text-sm font-bold text-slate-700 mb-4 text-center">Montos Totales por Factura ($)</h3><div class="h-64"><canvas id="chartMontosFacturas"></canvas></div></div>
         </div>
 
-        <h2 class="text-lg font-bold text-slate-800 mb-3">Historial de Facturas Emitidas</h2>
         <div class="overflow-x-auto border rounded-lg">
           <table class="w-full text-left text-sm border-collapse">
-            <thead>
-              <tr class="bg-slate-100 text-slate-700 border-b">
-                <th class="p-2">Folio / Fecha</th>
-                <th class="p-2">Razón Social / RFC</th>
-                <th class="p-2">Pedidos Amparados</th>
-                <th class="p-2 text-right">Subtotal</th>
-                <th class="p-2 text-right">IVA (16%)</th>
-                <th class="p-2 text-right">Total Facturado</th>
-              </tr>
-            </thead>
+            <thead><tr class="bg-slate-100 text-slate-700 border-b"><th class="p-2">Folio / Fecha</th><th class="p-2">Razón Social / RFC</th><th class="p-2">Pedidos Amparados</th><th class="p-2 text-right">Subtotal</th><th class="p-2 text-right">IVA (16%)</th><th class="p-2 text-right">Total Facturado</th></tr></thead>
             <tbody id="tablaReporteFacturasDetalle" class="divide-y"></tbody>
           </table>
         </div>
       </div>
-
     </div>
 
   </div>
 
   <script>
-    // ESTADO GLOBAL DE APLICACIÓN
+    // ESTADO GLOBAL
     let insumos = [];
     let itemsPedidoActual = [];
     let itemsCotizacionActual = [];
+    let mesBloqueado = false;
+    let usuarioSesion = null;
 
-    // Instancias de gráficos
-    let chartBarInstance = null;
-    let chartPieInstance = null;
-    let chartMetodosInstance = null;
-    let chartVentasPedInstance = null;
-    let chartEstructuraFacInstance = null;
-    let chartMontosFacInstance = null;
+    // TODOS LOS MÓDULOS DISPONIBLES EN EL ERP
+    const MODULOS_SISTEMA = [
+      { id: 'cotizador', btn: 'tabCotizadorBtn', mod: 'moduloCotizador', nombre: 'Catálogo Productos' },
+      { id: 'cotizacionesMulti', btn: 'tabCotizacionesMultiBtn', mod: 'moduloCotizacionesMulti', nombre: 'Cotizaciones' },
+      { id: 'pedidos', btn: 'tabPedidosBtn', mod: 'moduloPedidos', nombre: 'Pedidos' },
+      { id: 'facturacion', btn: 'tabFacturacionBtn', mod: 'moduloFacturacion', nombre: 'Facturación' },
+      { id: 'insumosCxP', btn: 'tabInsumosCxPBtn', mod: 'moduloInsumosCxP', nombre: 'Insumos & CxP' },
+      { id: 'tesoreria', btn: 'tabTesoreriaBtn', mod: 'moduloTesoreria', nombre: 'Tesorería' },
+      { id: 'contabilidad', btn: 'tabContabilidadBtn', mod: 'moduloContabilidad', nombre: 'Contabilidad' },
+      { id: 'nominas', btn: 'tabNominasBtn', mod: 'moduloNominas', nombre: 'Nóminas' },
+      { id: 'usuarios', btn: 'tabUsuariosBtn', mod: 'moduloUsuarios', nombre: 'Permisos & Usuarios' },
+      { id: 'reportes', btn: 'tabReportesBtn', mod: 'moduloReportes', nombre: 'Reportes' }
+    ];
 
     window.onload = function() {
+      inicializarUsuariosPredeterminados();
       actualizarListaGuardados();
       nuevoProducto();
       generarCodigoPedido();
@@ -688,92 +977,293 @@
       renderTablaCotizaciones();
       cargarListaPedidosFacturables();
       renderHistorialFacturasModule();
+      
+      const hoy = new Date().toISOString().split('T')[0];
+      if (document.getElementById('cxpFechaCompra')) document.getElementById('cxpFechaCompra').value = hoy;
+      if (document.getElementById('tesoreriaFecha')) document.getElementById('tesoreriaFecha').value = hoy;
+      if (document.getElementById('activoFecha')) document.getElementById('activoFecha').value = hoy;
+
+      cargarSelectorCxpPendientes();
+      renderKardexUEPS();
+      renderTablaVales();
+      renderTesoreria();
+      renderContabilidad();
+      renderNominas();
+
+      // Iniciar con sesión por defecto como Desarrollador
+      autenticarPorDefecto('admin@dev.com');
     };
 
+    // --- AUTENTICACIÓN Y ROLES DE USUARIO ---
+    function inicializarUsuariosPredeterminados() {
+      let usuarios = JSON.parse(localStorage.getItem('cotizador_usuarios'));
+      if (!usuarios || usuarios.length === 0) {
+        usuarios = [
+          {
+            nombre: 'Desarrollador Principal',
+            email: 'admin@dev.com',
+            pass: 'dev123',
+            perfil: 'Desarrollador',
+            permisos: ['cotizador', 'cotizacionesMulti', 'pedidos', 'facturacion', 'insumosCxP', 'tesoreria', 'contabilidad', 'nominas', 'usuarios', 'reportes']
+          },
+          {
+            nombre: 'ADMIN',
+            email: 'admin@empresa.com',
+            pass: 'ADM1N7',
+            perfil: 'Desarrollador',
+            permisos: ['cotizador', 'cotizacionesMulti', 'pedidos', 'facturacion', 'insumosCxP', 'tesoreria', 'contabilidad', 'nominas', 'usuarios', 'reportes']
+          },
+          {
+            nombre: 'Cliente Externo',
+            email: 'cliente@empresa.com',
+            pass: 'cliente123',
+            perfil: 'Cliente',
+            permisos: ['cotizacionesMulti', 'pedidos']
+          }
+        ];
+        localStorage.setItem('cotizador_usuarios', JSON.stringify(usuarios));
+      } else {
+        // Asegurar la actualización del usuario ADMIN a Desarrollador con todos los permisos
+        const adminIndex = usuarios.findIndex(u => u.email === 'admin@empresa.com');
+        const perfilDevPermisos = ['cotizador', 'cotizacionesMulti', 'pedidos', 'facturacion', 'insumosCxP', 'tesoreria', 'contabilidad', 'nominas', 'usuarios', 'reportes'];
+        if (adminIndex !== -1) {
+          usuarios[adminIndex].perfil = 'Desarrollador';
+          usuarios[adminIndex].permisos = perfilDevPermisos;
+        } else {
+          usuarios.push({
+            nombre: 'ADMIN',
+            email: 'admin@empresa.com',
+            pass: 'ADM1N7',
+            perfil: 'Desarrollador',
+            permisos: perfilDevPermisos
+          });
+        }
+        localStorage.setItem('cotizador_usuarios', JSON.stringify(usuarios));
+      }
+    }
+
+    function autenticarPorDefecto(email) {
+      let usuarios = JSON.parse(localStorage.getItem('cotizador_usuarios')) || [];
+      const user = usuarios.find(u => u.email === email);
+      if (user) establecerSesion(user);
+    }
+
+    function mostrarModalLogin() { document.getElementById('modalLogin').classList.remove('hidden'); }
+    function cerrarModalLogin() { document.getElementById('modalLogin').classList.add('hidden'); }
+
+    function autenticarUsuario() {
+      const email = document.getElementById('loginEmail').value.trim();
+      const pass = document.getElementById('loginPassword').value.trim();
+
+      let usuarios = JSON.parse(localStorage.getItem('cotizador_usuarios')) || [];
+      const user = usuarios.find(u => u.email === email && u.pass === pass);
+
+      if (user) {
+        establecerSesion(user);
+        cerrarModalLogin();
+        alert(`¡Bienvenido ${user.nombre} (${user.perfil})!`);
+      } else {
+        alert('Credenciales incorrectas. Verifica correo y contraseña.');
+      }
+    }
+
+    function establecerSesion(user) {
+      usuarioSesion = user;
+      document.getElementById('lblUsuarioActivo').innerText = `Sesión: ${user.nombre} (${user.email})`;
+      document.getElementById('lblPerfilActivo').innerText = `Perfil: ${user.perfil}`;
+      document.getElementById('btnAbrirLogin').classList.add('hidden');
+      document.getElementById('btnCerrarSesion').classList.remove('hidden');
+
+      aplicarPermisosAcceso();
+    }
+
+    function cerrarSesion() {
+      usuarioSesion = null;
+      document.getElementById('lblUsuarioActivo').innerText = 'Sesión: No iniciada';
+      document.getElementById('lblPerfilActivo').innerText = 'Perfil: Invitado';
+      document.getElementById('btnAbrirLogin').classList.remove('hidden');
+      document.getElementById('btnCerrarSesion').classList.add('hidden');
+
+      MODULOS_SISTEMA.forEach(m => {
+        document.getElementById(m.btn).classList.add('hidden');
+        document.getElementById(m.mod).classList.add('hidden');
+      });
+      mostrarModalLogin();
+    }
+
+    function aplicarPermisosAcceso() {
+      if (!usuarioSesion) return;
+
+      const permisos = usuarioSesion.permisos || [];
+
+      MODULOS_SISTEMA.forEach(m => {
+        const btnTab = document.getElementById(m.btn);
+        const modCard = document.getElementById(m.mod);
+
+        if (permisos.includes(m.id)) {
+          btnTab.classList.remove('hidden');
+        } else {
+          btnTab.classList.add('hidden');
+          modCard.classList.add('hidden');
+        }
+      });
+
+      const primerModuloPermitido = MODULOS_SISTEMA.find(m => permisos.includes(m.id));
+      if (primerModuloPermitido) cambiarModulo(primerModuloPermitido.id);
+
+      renderMatrizUsuarios();
+    }
+
+    function registrarNuevoUsuario() {
+      if (!usuarioSesion || usuarioSesion.perfil !== 'Desarrollador') {
+        return alert('⚠️ Facultad exclusiva del perfil DESARROLLADOR.');
+      }
+
+      const nombre = document.getElementById('nuevoNombre').value.trim();
+      const email = document.getElementById('nuevoEmail').value.trim();
+      const pass = document.getElementById('nuevaPassword').value.trim();
+      const perfil = document.getElementById('nuevoPerfil').value;
+
+      if (!nombre || !email || !pass) return alert('Completa todos los campos.');
+
+      let usuarios = JSON.parse(localStorage.getItem('cotizador_usuarios')) || [];
+      if (usuarios.find(u => u.email === email)) return alert('El correo ya existe.');
+
+      let permisosBase = ['cotizador', 'cotizacionesMulti', 'pedidos'];
+      if (perfil === 'Desarrollador') permisosBase = MODULOS_SISTEMA.map(m => m.id);
+      else if (perfil === 'Administrativo') permisosBase = ['cotizador', 'cotizacionesMulti', 'pedidos', 'facturacion', 'insumosCxP', 'tesoreria', 'contabilidad', 'nominas', 'reportes'];
+
+      usuarios.push({ nombre, email, pass, perfil, permisos: permisosBase });
+      localStorage.setItem('cotizador_usuarios', JSON.stringify(usuarios));
+
+      alert(`Usuario ${nombre} creado con éxito.`);
+      document.getElementById('nuevoNombre').value = '';
+      document.getElementById('nuevoEmail').value = '';
+      document.getElementById('nuevaPassword').value = '';
+      renderMatrizUsuarios();
+    }
+
+    function togglePermisoUsuario(email, idModulo) {
+      if (!usuarioSesion || usuarioSesion.perfil !== 'Desarrollador') {
+        return alert('⚠️ Solo el DESARROLLADOR puede modificar los permisos de los módulos.');
+      }
+
+      let usuarios = JSON.parse(localStorage.getItem('cotizador_usuarios')) || [];
+      const user = usuarios.find(u => u.email === email);
+
+      if (user) {
+        if (!Array.isArray(user.permisos)) user.permisos = [];
+        if (user.permisos.includes(idModulo)) {
+          user.permisos = user.permisos.filter(p => p !== idModulo);
+        } else {
+          user.permisos.push(idModulo);
+        }
+
+        localStorage.setItem('cotizador_usuarios', JSON.stringify(usuarios));
+        if (usuarioSesion.email === user.email) usuarioSesion = user;
+        aplicarPermisosAcceso();
+      }
+    }
+
+    function renderMatrizUsuarios() {
+      const tbody = document.getElementById('tablaMatrizUsuarios');
+      if (!tbody) return;
+
+      let usuarios = JSON.parse(localStorage.getItem('cotizador_usuarios')) || [];
+      tbody.innerHTML = '';
+
+      usuarios.forEach(u => {
+        let chksHtml = '<div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-[10px]">';
+        MODULOS_SISTEMA.forEach(m => {
+          const checked = (u.permisos || []).includes(m.id) ? 'checked' : '';
+          const disabled = (usuarioSesion && usuarioSesion.perfil !== 'Desarrollador') ? 'disabled' : '';
+          chksHtml += `<label class="flex items-center gap-1 bg-slate-50 border p-1 rounded cursor-pointer"><input type="checkbox" ${checked} ${disabled} onchange="togglePermisoUsuario('${u.email}', '${m.id}')" class="rounded text-purple-600"> ${m.nombre}</label>`;
+        });
+        chksHtml += '</div>';
+
+        tbody.innerHTML += `
+          <tr>
+            <td class="p-2 font-bold text-slate-800">${u.nombre}<span class="text-[10px] text-slate-400 block font-normal">${u.email}</span></td>
+            <td class="p-2 font-bold"><span class="px-2 py-0.5 rounded text-[10px] ${u.perfil === 'Desarrollador' ? 'bg-purple-100 text-purple-800' : u.perfil === 'Administrativo' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}">${u.perfil}</span></td>
+            <td class="p-2">${chksHtml}</td>
+          </tr>
+        `;
+      });
+    }
+
     function reiniciarProyectoCompleto() {
-      if (confirm('⚠️ ¿Estás seguro de reiniciar todos los datos? Se borrarán todos los productos, cotizaciones, pedidos y facturas guardados.')) {
-        localStorage.removeItem('cotizador_productos');
-        localStorage.removeItem('cotizador_pedidos');
-        localStorage.removeItem('cotizador_cotizaciones_multi');
-        localStorage.removeItem('cotizador_facturas');
+      if (confirm('⚠️ ¿Estás seguro de reiniciar todos los datos guardados en el ERP?')) {
+        localStorage.clear();
         window.location.reload();
       }
     }
 
     function cambiarModulo(modulo) {
-      const modulos = ['moduloCotizador', 'moduloCotizacionesMulti', 'moduloPedidos', 'moduloFacturacion', 'moduloReportes'];
-      const botones = ['tabCotizadorBtn', 'tabCotizacionesMultiBtn', 'tabPedidosBtn', 'tabFacturacionBtn', 'tabReportesBtn'];
+      if (usuarioSesion && !usuarioSesion.permisos.includes(modulo)) {
+        return alert('⛔ No tienes autorización para ingresar a este módulo.');
+      }
 
-      modulos.forEach(id => document.getElementById(id).classList.add('hidden'));
-      botones.forEach(id => {
-        document.getElementById(id).className = "py-3 px-3 font-bold text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1 whitespace-nowrap";
+      MODULOS_SISTEMA.forEach(m => {
+        const elMod = document.getElementById(m.mod);
+        const elBtn = document.getElementById(m.btn);
+        if (elMod) elMod.classList.add('hidden');
+        if (elBtn) elBtn.className = "py-3 px-3 font-bold text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1 whitespace-nowrap";
       });
 
-      if (modulo === 'cotizador') {
-        document.getElementById('moduloCotizador').classList.remove('hidden');
-        document.getElementById('tabCotizadorBtn').className = "py-3 px-3 font-bold text-blue-600 border-b-2 border-blue-600 bg-slate-50 flex items-center justify-center gap-1 whitespace-nowrap";
-      } else if (modulo === 'cotizacionesMulti') {
-        document.getElementById('moduloCotizacionesMulti').classList.remove('hidden');
-        document.getElementById('tabCotizacionesMultiBtn').className = "py-3 px-3 font-bold text-blue-600 border-b-2 border-blue-600 bg-slate-50 flex items-center justify-center gap-1 whitespace-nowrap";
-        cargarSelectorProductosCotizacion();
-        renderTablaCotizaciones();
-      } else if (modulo === 'pedidos') {
-        document.getElementById('moduloPedidos').classList.remove('hidden');
-        document.getElementById('tabPedidosBtn').className = "py-3 px-3 font-bold text-blue-600 border-b-2 border-blue-600 bg-slate-50 flex items-center justify-center gap-1 whitespace-nowrap";
-        cargarSelectorProductosPedido();
-        cargarSelectorCotizacionesEnPedido();
-        renderTablaPedidos();
-      } else if (modulo === 'facturacion') {
-        document.getElementById('moduloFacturacion').classList.remove('hidden');
-        document.getElementById('tabFacturacionBtn').className = "py-3 px-3 font-bold text-blue-600 border-b-2 border-blue-600 bg-slate-50 flex items-center justify-center gap-1 whitespace-nowrap";
-        cargarListaPedidosFacturables();
-        renderHistorialFacturasModule();
-      } else {
-        document.getElementById('moduloReportes').classList.remove('hidden');
-        document.getElementById('tabReportesBtn').className = "py-3 px-3 font-bold text-blue-600 border-b-2 border-blue-600 bg-slate-50 flex items-center justify-center gap-1 whitespace-nowrap";
-        generarReportes();
+      const mTarget = MODULOS_SISTEMA.find(m => m.id === modulo);
+      if (mTarget) {
+        document.getElementById(mTarget.mod).classList.remove('hidden');
+        document.getElementById(mTarget.btn).className = "py-3 px-3 font-bold text-blue-600 border-b-2 border-blue-600 bg-slate-50 flex items-center justify-center gap-1 whitespace-nowrap";
       }
+
+      if (modulo === 'cotizacionesMulti') { cargarSelectorProductosCotizacion(); renderTablaCotizaciones(); }
+      else if (modulo === 'pedidos') { cargarSelectorProductosPedido(); cargarSelectorCotizacionesEnPedido(); renderTablaPedidos(); }
+      else if (modulo === 'facturacion') { cargarListaPedidosFacturables(); renderHistorialFacturasModule(); }
+      else if (modulo === 'insumosCxP') { cargarSelectorCxpPendientes(); renderKardexUEPS(); renderTablaVales(); }
+      else if (modulo === 'tesoreria') { renderTesoreria(); }
+      else if (modulo === 'contabilidad') { renderContabilidad(); }
+      else if (modulo === 'nominas') { renderNominas(); }
+      else if (modulo === 'usuarios') { renderMatrizUsuarios(); }
+      else if (modulo === 'reportes') { generarReportes(); }
     }
 
-    function cambiarSubtabReporte(subtab) {
-      const btnProd = document.getElementById('subtabProductosBtn');
-      const btnPed = document.getElementById('subtabPedidosBtn');
-      const btnFac = document.getElementById('subtabFacturasBtn');
+    function cambiarTemaModulo(idModulo, tema) {
+      const mod = document.getElementById(idModulo);
+      if (!mod) return;
+
+      mod.classList.remove('bg-white', 'bg-slate-900', 'text-white', 'bg-emerald-50', 'bg-purple-50', 'bg-amber-50');
       
-      const vistaProd = document.getElementById('vistaReporteProductos');
-      const vistaPed = document.getElementById('vistaReportePedidos');
-      const vistaFac = document.getElementById('vistaReporteFacturas');
-
-      btnProd.className = "px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900 font-bold";
-      btnPed.className = "px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900 font-bold";
-      btnFac.className = "px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900 font-bold";
-
-      vistaProd.classList.add('hidden');
-      vistaPed.classList.add('hidden');
-      vistaFac.classList.add('hidden');
-
-      if (subtab === 'productos') {
-        btnProd.className = "px-3 py-1.5 rounded-md bg-white shadow-sm text-blue-600 font-bold";
-        vistaProd.classList.remove('hidden');
-      } else if (subtab === 'pedidos') {
-        btnPed.className = "px-3 py-1.5 rounded-md bg-white shadow-sm text-blue-600 font-bold";
-        vistaPed.classList.remove('hidden');
-      } else if (subtab === 'facturas') {
-        btnFac.className = "px-3 py-1.5 rounded-md bg-white shadow-sm text-blue-600 font-bold";
-        vistaFac.classList.remove('hidden');
-      }
-      generarReportes();
+      if (tema === 'dark') mod.classList.add('bg-slate-900', 'text-white');
+      else if (tema === 'emerald') mod.classList.add('bg-emerald-50');
+      else if (tema === 'purple') mod.classList.add('bg-purple-50');
+      else if (tema === 'amber') mod.classList.add('bg-amber-50');
+      else mod.classList.add('bg-white');
     }
 
-    // --- MÓDULO CATÁLOGO DE PRODUCTOS ---
+    function toggleBloqueoCierreMes() {
+      mesBloqueado = !mesBloqueado;
+      const btn = document.getElementById('btnCierreMes');
+      const banner = document.getElementById('bannerCierreMes');
+
+      if (mesBloqueado) {
+        btn.innerHTML = '🔓 Desbloquear Cierre de Mes';
+        btn.className = "bg-red-600 text-white font-bold text-xs px-3 py-1.5 rounded hover:bg-red-700 whitespace-nowrap";
+        banner.classList.remove('hidden');
+        alert('🔒 Cierre de mes activado. Los movimientos contables han sido bloqueados.');
+      } else {
+        btn.innerHTML = '🔒 Bloquear por Cierre de Mes';
+        btn.className = "bg-amber-600 text-white font-bold text-xs px-3 py-1.5 rounded hover:bg-amber-700 whitespace-nowrap";
+        banner.classList.add('hidden');
+        alert('🔓 Periodo contable desbloqueado.');
+      }
+    }
+
+    // --- MÓDULO 1: CATÁLOGO PRODUCTOS ---
     function renderInsumos() {
       const tbody = document.getElementById('tablaInsumos');
       if (!tbody) return;
       tbody.innerHTML = '';
-
-      if (!Array.isArray(insumos) || insumos.length === 0) {
-        insumos = [{ nombre: 'Harina Base', cant: 1, costo: 20, merma: 0 }];
-      }
+      if (!Array.isArray(insumos) || insumos.length === 0) insumos = [{ nombre: 'Harina Base', cant: 1, costo: 20, merma: 0 }];
 
       insumos.forEach((item, index) => {
         const cant = Number(item.cant) || 0;
@@ -788,33 +1278,16 @@
             <td class="p-1"><input type="number" value="${costo}" step="0.1" onchange="actualizarInsumo(${index}, 'costo', this.value)" class="w-full border p-1 text-xs rounded"></td>
             <td class="p-1"><input type="number" value="${merma}" onchange="actualizarInsumo(${index}, 'merma', this.value)" class="w-full border p-1 text-xs rounded"></td>
             <td class="p-1 text-right font-semibold text-xs">$${subtotal.toFixed(2)}</td>
-            <td class="p-1 text-center"><button onclick="eliminarInsumo(${index})" class="text-red-500 font-bold text-xs hover:text-red-700">X</button></td>
+            <td class="p-1 text-center"><button onclick="eliminarInsumo(${index})" class="text-red-500 font-bold text-xs">X</button></td>
           </tr>
         `;
       });
       calcular();
     }
 
-    function agregarInsumo() {
-      if (!Array.isArray(insumos)) insumos = [];
-      insumos.push({ nombre: 'Ingrediente Nuevo', cant: 1, costo: 10, merma: 0 });
-      renderInsumos();
-    }
-
-    function eliminarInsumo(index) {
-      if (insumos.length <= 1) {
-        alert('El producto debe contener al menos 1 insumo.');
-        return;
-      }
-      insumos.splice(index, 1);
-      renderInsumos();
-    }
-
-    function actualizarInsumo(index, campo, valor) {
-      if (!insumos[index]) return;
-      insumos[index][campo] = campo === 'nombre' ? valor : Number(valor) || 0;
-      renderInsumos();
-    }
+    function agregarInsumo() { insumos.push({ nombre: 'Ingrediente Nuevo', cant: 1, costo: 10, merma: 0 }); renderInsumos(); }
+    function eliminarInsumo(index) { if (insumos.length <= 1) return alert('Mínimo 1 insumo.'); insumos.splice(index, 1); renderInsumos(); }
+    function actualizarInsumo(index, campo, valor) { insumos[index][campo] = campo === 'nombre' ? valor : Number(valor) || 0; renderInsumos(); }
 
     function calcular() {
       const unidades = Math.max(1, Number(document.getElementById('loteUnidades').value) || 1);
@@ -824,19 +1297,12 @@
       const cif = Number(document.getElementById('costoCIF').value) || 0;
       const margenPct = Number(document.getElementById('margenDeseado').value) || 0;
 
-      const costoMP = (insumos || []).reduce((sum, item) => {
-        const c = Number(item.cant) || 0;
-        const pu = Number(item.costo) || 0;
-        const m = Number(item.merma) || 0;
-        return sum + (c * pu * (1 + (m / 100)));
-      }, 0);
-
-      const costoMOD = horas * tarifaHora;
-      const costoTotalFabricacion = costoMP + costoMOD + empaque + cif;
+      const costoMP = (insumos || []).reduce((sum, item) => sum + ((Number(item.cant)||0) * (Number(item.costo)||0) * (1 + ((Number(item.merma)||0)/100))), 0);
+      const costoTotalFabricacion = costoMP + (horas * tarifaHora) + empaque + cif;
       const costoUnitarioFabricacion = costoTotalFabricacion / unidades;
 
-      const denominador = 1 - (margenPct / 100);
-      const precioVentaLote = denominador > 0 ? (costoTotalFabricacion / denominador) : costoTotalFabricacion;
+      const den = 1 - (margenPct / 100);
+      const precioVentaLote = den > 0 ? (costoTotalFabricacion / den) : costoTotalFabricacion;
       const precioVentaUnitario = precioVentaLote / unidades;
 
       document.getElementById('resMP').innerText = `$${costoMP.toFixed(2)}`;
@@ -848,21 +1314,15 @@
     function nuevoProducto() {
       document.getElementById('productoNombre').value = 'Nuevo Producto';
       document.getElementById('loteUnidades').value = 10;
-      document.getElementById('horasTrabajo').value = 1;
-      document.getElementById('costoHora').value = 50;
-      document.getElementById('costoEmpaque').value = 10;
-      document.getElementById('costoCIF').value = 10;
-      document.getElementById('margenDeseado').value = 30;
-      document.getElementById('selectGuardados').value = '';
       insumos = [{ nombre: 'Harina Base', cant: 1, costo: 20, merma: 0 }];
       renderInsumos();
     }
 
     function guardarProducto() {
       const nombre = document.getElementById('productoNombre').value.trim();
-      if (!nombre) return alert('Ingresa un nombre para el producto.');
-
-      const datosProducto = {
+      if (!nombre) return alert('Ingresa un nombre.');
+      let prods = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
+      prods[nombre] = {
         nombre: nombre,
         loteUnidades: Number(document.getElementById('loteUnidades').value) || 1,
         horasTrabajo: Number(document.getElementById('horasTrabajo').value) || 0,
@@ -872,730 +1332,593 @@
         margenDeseado: Number(document.getElementById('margenDeseado').value) || 0,
         insumos: JSON.parse(JSON.stringify(insumos))
       };
-
-      let productosGuardados = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
-      productosGuardados[nombre] = datosProducto;
-      localStorage.setItem('cotizador_productos', JSON.stringify(productosGuardados));
+      localStorage.setItem('cotizador_productos', JSON.stringify(prods));
       actualizarListaGuardados();
-      cargarSelectorProductosPedido();
-      cargarSelectorProductosCotizacion();
-      document.getElementById('selectGuardados').value = nombre;
-      alert(`¡Producto "${nombre}" guardado con éxito!`);
+      alert(`¡Producto "${nombre}" guardado!`);
     }
 
     function cargarProducto() {
       const nombre = document.getElementById('selectGuardados').value;
-      if (!nombre) return;
-      let productosGuardados = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
-      const prod = productosGuardados[nombre];
+      let prods = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
+      const prod = prods[nombre];
       if (prod) {
-        document.getElementById('productoNombre').value = prod.nombre || 'Nuevo Producto';
-        document.getElementById('loteUnidades').value = prod.loteUnidades || 10;
-        document.getElementById('horasTrabajo').value = prod.horasTrabajo || 1;
-        document.getElementById('costoHora').value = prod.costoHora || 50;
-        document.getElementById('costoEmpaque').value = prod.costoEmpaque || 10;
-        document.getElementById('costoCIF').value = prod.costoCIF || 10;
-        document.getElementById('margenDeseado').value = prod.margenDeseado || 30;
-        
-        insumos = Array.isArray(prod.insumos) && prod.insumos.length > 0 
-          ? JSON.parse(JSON.stringify(prod.insumos)) 
-          : [{ nombre: 'Harina Base', cant: 1, costo: 20, merma: 0 }];
+        document.getElementById('productoNombre').value = prod.nombre;
+        document.getElementById('loteUnidades').value = prod.loteUnidades;
+        insumos = prod.insumos || [];
         renderInsumos();
       }
     }
 
     function eliminarProducto() {
       const nombre = document.getElementById('selectGuardados').value;
-      if (!nombre) return alert('Selecciona un producto guardado.');
-      if (confirm(`¿Eliminar "${nombre}"?`)) {
-        let productosGuardados = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
-        delete productosGuardados[nombre];
-        localStorage.setItem('cotizador_productos', JSON.stringify(productosGuardados));
-        actualizarListaGuardados();
-        cargarSelectorProductosPedido();
-        cargarSelectorProductosCotizacion();
-        nuevoProducto();
-      }
+      if (!nombre) return;
+      let prods = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
+      delete prods[nombre];
+      localStorage.setItem('cotizador_productos', JSON.stringify(prods));
+      actualizarListaGuardados();
+      nuevoProducto();
     }
 
     function actualizarListaGuardados() {
       const select = document.getElementById('selectGuardados');
-      select.innerHTML = '<option value="">-- Seleccionar --</option>';
-      let productosGuardados = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
-      Object.keys(productosGuardados).forEach(n => select.innerHTML += `<option value="${n}">${n}</option>`);
+      if (!select) return;
+      select.innerHTML = '<option value="">-- Cargar Guardado --</option>';
+      let prods = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
+      Object.keys(prods).forEach(n => select.innerHTML += `<option value="${n}">${n}</option>`);
     }
 
-    // --- MÓDULO COTIZACIONES MULTI-PRODUCTO ---
-    function generarCodigoCotizacion() {
-      const rand = Math.floor(1000 + Math.random() * 9000);
-      document.getElementById('cotizacionCodigo').value = `COT-${rand}`;
-    }
-
+    // --- MÓDULO 2: COTIZACIONES MULTI-PRODUCTO ---
+    function generarCodigoCotizacion() { document.getElementById('cotizacionCodigo').value = `COT-${Math.floor(1000 + Math.random() * 9000)}`; }
     function cargarSelectorProductosCotizacion() {
       const select = document.getElementById('cotizacionSelectProducto');
       if (!select) return;
-      select.innerHTML = '<option value="">-- Seleccionar Producto --</option>';
-      let productos = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
-      Object.keys(productos).forEach(n => select.innerHTML += `<option value="${n}">${n}</option>`);
+      select.innerHTML = '<option value="">-- Seleccionar --</option>';
+      let prods = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
+      Object.keys(prods).forEach(n => select.innerHTML += `<option value="${n}">${n}</option>`);
+    }
+
+    function calcularPrecioLoteProducto(nombre) {
+      let prods = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
+      const p = prods[nombre];
+      if (!p) return 0;
+      const costoMP = (p.insumos || []).reduce((s, i) => s + ((Number(i.cant||i.cantidad)||0) * Number(i.costo||0) * (1 + ((Number(i.merma)||0)/100))), 0);
+      const costoTotal = costoMP + (Number(p.horasTrabajo||0) * Number(p.costoHora||0)) + Number(p.costoEmpaque||0) + Number(p.costoCIF||0);
+      const den = 1 - (Number(p.margenDeseado||0)/100);
+      return den > 0 ? (costoTotal / den) : costoTotal;
     }
 
     function mostrarPrecioTempCotizacion() {
-      const prodNombre = document.getElementById('cotizacionSelectProducto').value;
-      if (!prodNombre) {
-        document.getElementById('txtPrecioLoteTempCotizacion').innerText = 'Precio Lote: $0.00';
-        return;
-      }
-      const precioLote = calcularPrecioLoteProducto(prodNombre);
-      document.getElementById('txtPrecioLoteTempCotizacion').innerText = `Precio Lote: $${precioLote.toFixed(2)}`;
+      const name = document.getElementById('cotizacionSelectProducto').value;
+      const p = calcularPrecioLoteProducto(name);
+      document.getElementById('txtPrecioLoteTempCotizacion').innerText = `Precio Lote: $${p.toFixed(2)}`;
     }
 
     function agregarItemCotizacion() {
-      const prodNombre = document.getElementById('cotizacionSelectProducto').value;
+      const name = document.getElementById('cotizacionSelectProducto').value;
       const cant = parseInt(document.getElementById('cotizacionCantidadItem').value, 10) || 1;
-
-      if (!prodNombre) return alert('Selecciona un producto del catálogo.');
-
-      const precioLote = calcularPrecioLoteProducto(prodNombre);
-      const subtotal = precioLote * cant;
-
-      itemsCotizacionActual.push({ producto: prodNombre, cantidad: cant, precioLote: precioLote, subtotal: subtotal });
-      renderTablaItemsCotizacionActuales();
-      document.getElementById('cotizacionSelectProducto').value = '';
-      document.getElementById('cotizacionCantidadItem').value = '1';
-      document.getElementById('txtPrecioLoteTempCotizacion').innerText = 'Precio Lote: $0.00';
-    }
-
-    function eliminarItemCotizacion(index) {
-      itemsCotizacionActual.splice(index, 1);
+      if (!name) return alert('Selecciona un producto.');
+      const p = calcularPrecioLoteProducto(name);
+      itemsCotizacionActual.push({ producto: name, cantidad: cant, precioLote: p, subtotal: p * cant });
       renderTablaItemsCotizacionActuales();
     }
 
     function renderTablaItemsCotizacionActuales() {
       const tbody = document.getElementById('tablaItemsCotizacionActual');
-      if (itemsCotizacionActual.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="p-3 text-center text-slate-400">No has agregado productos a la cotización.</td></tr>';
-        calcularTotalesCotizacion();
-        return;
-      }
-
       tbody.innerHTML = '';
-      itemsCotizacionActual.forEach((item, index) => {
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-50">
-            <td class="p-2 font-semibold text-slate-800">${item.producto}</td>
-            <td class="p-2 text-center font-bold">${item.cantidad}</td>
-            <td class="p-2 text-right">$${Number(item.precioLote).toFixed(2)}</td>
-            <td class="p-2 text-right font-bold text-slate-700">$${Number(item.subtotal).toFixed(2)}</td>
-            <td class="p-2 text-center">
-              <button onclick="eliminarItemCotizacion(${index})" class="text-red-500 font-bold hover:text-red-700">X</button>
-            </td>
-          </tr>
-        `;
+      itemsCotizacionActual.forEach((item, idx) => {
+        tbody.innerHTML += `<tr><td class="p-2">${item.producto}</td><td class="p-2 text-center">${item.cantidad}</td><td class="p-2 text-right">$${item.precioLote.toFixed(2)}</td><td class="p-2 text-right font-bold">$${item.subtotal.toFixed(2)}</td><td class="p-2 text-center"><button onclick="itemsCotizacionActual.splice(${idx},1);renderTablaItemsCotizacionActuales();" class="text-red-500 font-bold">X</button></td></tr>`;
       });
       calcularTotalesCotizacion();
     }
 
-    function toggleFormaPagoCotizacion() {
-      calcularTotalesCotizacion();
-    }
-
+    function toggleFormaPagoCotizacion() { calcularTotalesCotizacion(); }
     function calcularTotalesCotizacion() {
-      const subtotalGlobal = itemsCotizacionActual.reduce((sum, item) => sum + Number(item.subtotal), 0);
-      const formaPago = document.getElementById('cotizacionFormaPago').value;
-      const comision = (formaPago === 'Tarjeta de Crédito') ? subtotalGlobal * 0.035 : 0;
-      const total = subtotalGlobal + comision;
-
-      document.getElementById('cotizacionSubtotal').innerText = `$${subtotalGlobal.toFixed(2)}`;
-      document.getElementById('cotizacionComision').innerText = `$${comision.toFixed(2)}`;
-      document.getElementById('cotizacionTotal').innerText = `$${total.toFixed(2)}`;
+      const sub = itemsCotizacionActual.reduce((s, i) => s + i.subtotal, 0);
+      const com = (document.getElementById('cotizacionFormaPago').value === 'Tarjeta de Crédito') ? sub * 0.035 : 0;
+      document.getElementById('cotizacionSubtotal').innerText = `$${sub.toFixed(2)}`;
+      document.getElementById('cotizacionComision').innerText = `$${com.toFixed(2)}`;
+      document.getElementById('cotizacionTotal').innerText = `$${(sub + com).toFixed(2)}`;
     }
 
     function procesarCotizacion() {
-      const codigo = document.getElementById('cotizacionCodigo').value;
-      const cliente = document.getElementById('cotizacionCliente').value.trim();
-      const formaPago = document.getElementById('cotizacionFormaPago').value;
-
-      if (!cliente) return alert('Ingresa el nombre del cliente o prospecto.');
-      if (itemsCotizacionActual.length === 0) return alert('Agrega al menos 1 producto a la cotización.');
-
-      const subtotalVal = itemsCotizacionActual.reduce((sum, item) => sum + Number(item.subtotal), 0);
-      const comisionVal = (formaPago === 'Tarjeta de Crédito') ? subtotalVal * 0.035 : 0;
-      const totalVal = subtotalVal + comisionVal;
-
-      const nuevaCotizacion = {
-        codigo: codigo,
-        cliente: cliente,
-        items: [...itemsCotizacionActual],
-        formaPago: formaPago,
-        subtotal: subtotalVal,
-        comision: comisionVal,
-        total: totalVal,
-        fecha: new Date().toLocaleDateString(),
-        estado: 'Cotizado'
-      };
-
-      let cotizaciones = JSON.parse(localStorage.getItem('cotizador_cotizaciones_multi')) || [];
-      cotizaciones.unshift(nuevaCotizacion);
-      localStorage.setItem('cotizador_cotizaciones_multi', JSON.stringify(cotizaciones));
-
-      alert(`¡Cotización ${codigo} registrada con éxito!`);
+      const cod = document.getElementById('cotizacionCodigo').value;
+      const cli = document.getElementById('cotizacionCliente').value.trim();
+      if (!cli || itemsCotizacionActual.length === 0) return alert('Ingresa cliente y al menos 1 producto.');
       
-      document.getElementById('cotizacionCliente').value = '';
+      const sub = itemsCotizacionActual.reduce((s, i) => s + i.subtotal, 0);
+      const com = (document.getElementById('cotizacionFormaPago').value === 'Tarjeta de Crédito') ? sub * 0.035 : 0;
+
+      let cots = JSON.parse(localStorage.getItem('cotizador_cotizaciones_multi')) || [];
+      cots.unshift({ codigo: cod, cliente: cli, items: [...itemsCotizacionActual], formaPago: document.getElementById('cotizacionFormaPago').value, total: sub + com });
+      localStorage.setItem('cotizador_cotizaciones_multi', JSON.stringify(cots));
+
+      alert(`Cotización ${cod} guardada.`);
       itemsCotizacionActual = [];
       renderTablaItemsCotizacionActuales();
       generarCodigoCotizacion();
       renderTablaCotizaciones();
-      cargarSelectorCotizacionesEnPedido();
     }
 
     function renderTablaCotizaciones() {
-      let cotizaciones = JSON.parse(localStorage.getItem('cotizador_cotizaciones_multi')) || [];
+      let cots = JSON.parse(localStorage.getItem('cotizador_cotizaciones_multi')) || [];
       const tbody = document.getElementById('tablaCotizaciones');
-      
-      if (!tbody) return;
-      if (cotizaciones.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400">No hay cotizaciones registradas.</td></tr>';
-        return;
-      }
-
-      tbody.innerHTML = '';
-      cotizaciones.forEach(c => {
-        const resumenItems = (c.items || []).map(i => `${i.cantidad}x ${i.producto}`).join(', ');
-        const totalNum = Number(c.total) || 0;
-        
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-50">
-            <td class="p-2 font-mono font-bold text-blue-700">${c.codigo}</td>
-            <td class="p-2">
-              <span class="font-semibold block">${c.cliente}</span>
-              <span class="text-[10px] text-slate-500 block truncate max-w-[180px]">${resumenItems}</span>
-            </td>
-            <td class="p-2 text-slate-600">${c.formaPago}</td>
-            <td class="p-2 text-right font-bold text-blue-700">$${totalNum.toFixed(2)}</td>
-          </tr>
-        `;
+      tbody.innerHTML = cots.length === 0 ? '<tr><td colspan="3" class="p-3 text-center text-slate-400">Sin cotizaciones.</td></tr>' : '';
+      cots.forEach(c => {
+        tbody.innerHTML += `<tr><td class="p-2 font-mono font-bold text-blue-700">${c.codigo}</td><td class="p-2">${c.cliente}</td><td class="p-2 text-right font-bold">$${Number(c.total).toFixed(2)}</td></tr>`;
       });
     }
 
-    function limpiarHistorialCotizaciones() {
-      if (confirm('¿Deseas reiniciar el historial de cotizaciones?')) {
-        localStorage.removeItem('cotizador_cotizaciones_multi');
-        renderTablaCotizaciones();
-        cargarSelectorCotizacionesEnPedido();
-      }
-    }
+    function limpiarHistorialCotizaciones() { localStorage.removeItem('cotizador_cotizaciones_multi'); renderTablaCotizaciones(); }
 
-    // --- MÓDULO DE PEDIDOS ---
-    function generarCodigoPedido() {
-      const rand = Math.floor(1000 + Math.random() * 9000);
-      document.getElementById('pedidoCodigo').value = `PED-${rand}`;
-    }
-
+    // --- MÓDULO 3: PEDIDOS ---
+    function generarCodigoPedido() { document.getElementById('pedidoCodigo').value = `PED-${Math.floor(1000 + Math.random() * 9000)}`; }
     function cargarSelectorProductosPedido() {
       const select = document.getElementById('pedidoSelectProducto');
       if (!select) return;
-      select.innerHTML = '<option value="">-- Seleccionar Producto --</option>';
-      let productos = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
-      Object.keys(productos).forEach(n => select.innerHTML += `<option value="${n}">${n}</option>`);
+      select.innerHTML = '<option value="">-- Seleccionar --</option>';
+      let prods = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
+      Object.keys(prods).forEach(n => select.innerHTML += `<option value="${n}">${n}</option>`);
     }
 
     function cargarSelectorCotizacionesEnPedido() {
       const select = document.getElementById('selectCotizacionBase');
       if (!select) return;
-      select.innerHTML = '<option value="">-- Seleccionar Cotización Guardada --</option>';
-      let cotizaciones = JSON.parse(localStorage.getItem('cotizador_cotizaciones_multi')) || [];
-      cotizaciones.forEach(c => {
-        select.innerHTML += `<option value="${c.codigo}">${c.codigo} - ${c.cliente} ($${Number(c.total).toFixed(2)})</option>`;
-      });
+      select.innerHTML = '<option value="">-- Seleccionar Cotización --</option>';
+      let cots = JSON.parse(localStorage.getItem('cotizador_cotizaciones_multi')) || [];
+      cots.forEach(c => select.innerHTML += `<option value="${c.codigo}">${c.codigo} - ${c.cliente}</option>`);
     }
 
     function cargarCotizacionBaseEnPedido() {
-      const codigoCot = document.getElementById('selectCotizacionBase').value;
-      if (!codigoCot) return;
-
-      let cotizaciones = JSON.parse(localStorage.getItem('cotizador_cotizaciones_multi')) || [];
-      const cotElegida = cotizaciones.find(c => c.codigo === codigoCot);
-
-      if (cotElegida) {
-        document.getElementById('pedidoCliente').value = cotElegida.cliente || '';
-        document.getElementById('pedidoFormaPago').value = cotElegida.formaPago || 'Tarjeta de Crédito';
-        
-        // Copia profunda de los ítems cotizados
-        itemsPedidoActual = JSON.parse(JSON.stringify(cotElegida.items || []));
+      const cod = document.getElementById('selectCotizacionBase').value;
+      let cots = JSON.parse(localStorage.getItem('cotizador_cotizaciones_multi')) || [];
+      const cot = cots.find(c => c.codigo === cod);
+      if (cot) {
+        document.getElementById('pedidoCliente').value = cot.cliente;
+        itemsPedidoActual = JSON.parse(JSON.stringify(cot.items || []));
         renderTablaItemsActuales();
-        toggleFormaPago();
-
-        alert(`Cotización ${codigoCot} cargada correctamente. Puedes agregar o modificar ítems.`);
       }
-    }
-
-    function calcularPrecioLoteProducto(prodNombre) {
-      let productos = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
-      const prod = productos[prodNombre];
-      if (!prod) return 0;
-
-      const costoMP = (prod.insumos || []).reduce((s, i) => {
-        const cantidadVal = Number(i.cant !== undefined ? i.cant : i.cantidad) || 0;
-        return s + (cantidadVal * Number(i.costo || 0) * (1 + (Number(i.merma || 0) / 100)));
-      }, 0);
-
-      const costoTotal = costoMP + 
-        (Number(prod.horasTrabajo || 0) * Number(prod.costoHora || 0)) + 
-        Number(prod.costoEmpaque || 0) + 
-        Number(prod.costoCIF || 0);
-
-      const den = 1 - (Number(prod.margenDeseado || 0) / 100);
-      return den > 0 ? (costoTotal / den) : costoTotal;
     }
 
     function mostrarPrecioTemp() {
-      const prodNombre = document.getElementById('pedidoSelectProducto').value;
-      if (!prodNombre) {
-        document.getElementById('txtPrecioLoteTemp').innerText = 'Precio Lote: $0.00';
-        return;
-      }
-      const precioLote = calcularPrecioLoteProducto(prodNombre);
-      document.getElementById('txtPrecioLoteTemp').innerText = `Precio Lote: $${precioLote.toFixed(2)}`;
+      const name = document.getElementById('pedidoSelectProducto').value;
+      const p = calcularPrecioLoteProducto(name);
+      document.getElementById('txtPrecioLoteTemp').innerText = `Precio Lote: $${p.toFixed(2)}`;
     }
 
     function agregarItemPedido() {
-      const prodNombre = document.getElementById('pedidoSelectProducto').value;
+      const name = document.getElementById('pedidoSelectProducto').value;
       const cant = parseInt(document.getElementById('pedidoCantidadItem').value, 10) || 1;
-
-      if (!prodNombre) return alert('Selecciona un producto del catálogo.');
-
-      const precioLote = calcularPrecioLoteProducto(prodNombre);
-      const subtotal = precioLote * cant;
-
-      itemsPedidoActual.push({ producto: prodNombre, cantidad: cant, precioLote: precioLote, subtotal: subtotal });
-      renderTablaItemsActuales();
-      document.getElementById('pedidoSelectProducto').value = '';
-      document.getElementById('pedidoCantidadItem').value = '1';
-      document.getElementById('txtPrecioLoteTemp').innerText = 'Precio Lote: $0.00';
-    }
-
-    function eliminarItemPedido(index) {
-      itemsPedidoActual.splice(index, 1);
+      if (!name) return alert('Selecciona un producto.');
+      const p = calcularPrecioLoteProducto(name);
+      itemsPedidoActual.push({ producto: name, cantidad: cant, precioLote: p, subtotal: p * cant });
       renderTablaItemsActuales();
     }
 
     function renderTablaItemsActuales() {
       const tbody = document.getElementById('tablaItemsPedidoActual');
-      if (itemsPedidoActual.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="p-3 text-center text-slate-400">No has agregado productos al pedido.</td></tr>';
-        calcularTotalesPedido();
-        return;
-      }
-
       tbody.innerHTML = '';
-      itemsPedidoActual.forEach((item, index) => {
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-50">
-            <td class="p-2 font-semibold text-slate-800">${item.producto}</td>
-            <td class="p-2 text-center font-bold">${item.cantidad}</td>
-            <td class="p-2 text-right">$${Number(item.precioLote).toFixed(2)}</td>
-            <td class="p-2 text-right font-bold text-slate-700">$${Number(item.subtotal).toFixed(2)}</td>
-            <td class="p-2 text-center">
-              <button onclick="eliminarItemPedido(${index})" class="text-red-500 font-bold hover:text-red-700">X</button>
-            </td>
-          </tr>
-        `;
+      itemsPedidoActual.forEach((item, idx) => {
+        tbody.innerHTML += `<tr><td class="p-2">${item.producto}</td><td class="p-2 text-center">${item.cantidad}</td><td class="p-2 text-right">$${item.precioLote.toFixed(2)}</td><td class="p-2 text-right font-bold">$${item.subtotal.toFixed(2)}</td><td class="p-2 text-center"><button onclick="itemsPedidoActual.splice(${idx},1);renderTablaItemsActuales();" class="text-red-500 font-bold">X</button></td></tr>`;
       });
       calcularTotalesPedido();
     }
 
     function toggleFormaPago() {
       const forma = document.getElementById('pedidoFormaPago').value;
-      const camposTC = document.getElementById('camposTarjeta');
-      if (forma === 'Tarjeta de Crédito') {
-        camposTC.classList.remove('hidden');
-      } else {
-        camposTC.classList.add('hidden');
-      }
+      document.getElementById('camposTarjeta').className = forma === 'Tarjeta de Crédito' ? 'space-y-2 mb-4 p-3 bg-blue-50 border border-blue-200 rounded' : 'hidden';
       calcularTotalesPedido();
     }
 
     function calcularTotalesPedido() {
-      const subtotalGlobal = itemsPedidoActual.reduce((sum, item) => sum + Number(item.subtotal), 0);
-      const formaPago = document.getElementById('pedidoFormaPago').value;
-      const comision = (formaPago === 'Tarjeta de Crédito') ? subtotalGlobal * 0.035 : 0;
-      const total = subtotalGlobal + comision;
-
-      document.getElementById('pedidoSubtotal').innerText = `$${subtotalGlobal.toFixed(2)}`;
-      document.getElementById('pedidoComision').innerText = `$${comision.toFixed(2)}`;
-      document.getElementById('pedidoTotal').innerText = `$${total.toFixed(2)}`;
+      const sub = itemsPedidoActual.reduce((s, i) => s + i.subtotal, 0);
+      const com = (document.getElementById('pedidoFormaPago').value === 'Tarjeta de Crédito') ? sub * 0.035 : 0;
+      document.getElementById('pedidoSubtotal').innerText = `$${sub.toFixed(2)}`;
+      document.getElementById('pedidoComision').innerText = `$${com.toFixed(2)}`;
+      document.getElementById('pedidoTotal').innerText = `$${(sub + com).toFixed(2)}`;
     }
 
     function procesarPedido() {
-      const codigo = document.getElementById('pedidoCodigo').value;
-      const cliente = document.getElementById('pedidoCliente').value.trim();
-      const formaPago = document.getElementById('pedidoFormaPago').value;
+      const cod = document.getElementById('pedidoCodigo').value;
+      const cli = document.getElementById('pedidoCliente').value.trim();
+      if (!cli || itemsPedidoActual.length === 0) return alert('Ingresa cliente y productos.');
 
-      if (!cliente) return alert('Ingresa el nombre del cliente.');
-      if (itemsPedidoActual.length === 0) return alert('Agrega al menos 1 producto al pedido.');
+      const sub = itemsPedidoActual.reduce((s, i) => s + i.subtotal, 0);
+      const com = (document.getElementById('pedidoFormaPago').value === 'Tarjeta de Crédito') ? sub * 0.035 : 0;
+      const tot = sub + com;
 
-      if (formaPago === 'Tarjeta de Crédito') {
-        const numTc = document.getElementById('tcNumero').value.trim();
-        if (numTc.length < 15) return alert('Ingresa un número de tarjeta válido.');
-      }
+      let peds = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
+      peds.unshift({ codigo: cod, cliente: cli, items: [...itemsPedidoActual], formaPago: document.getElementById('pedidoFormaPago').value, total: tot, saldoPendiente: tot, fecha: new Date().toLocaleDateString() });
+      localStorage.setItem('cotizador_pedidos', JSON.stringify(peds));
 
-      const subtotalVal = itemsPedidoActual.reduce((sum, item) => sum + Number(item.subtotal), 0);
-      const comisionVal = (formaPago === 'Tarjeta de Crédito') ? subtotalVal * 0.035 : 0;
-      const totalVal = subtotalVal + comisionVal;
+      let tes = JSON.parse(localStorage.getItem('cotizador_tesoreria')) || [];
+      tes.unshift({ id: `TES-${Math.floor(1000+Math.random()*9000)}`, tipo: 'Entrada (Depósito Cliente)', via: document.getElementById('pedidoFormaPago').value === 'Tarjeta de Crédito' ? 'Bancaria' : 'Efectivo', concepto: `Cobro de Pedido ${cod} (${cli})`, monto: tot, fecha: new Date().toLocaleDateString(), estado: 'Autorizado', conciliado: true });
+      localStorage.setItem('cotizador_tesoreria', JSON.stringify(tes));
 
-      const nuevoPedido = {
-        codigo: codigo,
-        cliente: cliente,
-        items: [...itemsPedidoActual],
-        formaPago: formaPago,
-        subtotal: subtotalVal,
-        comision: comisionVal,
-        total: totalVal,
-        saldoPendiente: totalVal,
-        fecha: new Date().toLocaleDateString(),
-        estado: 'Pagado'
-      };
-
-      let pedidos = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
-      pedidos.unshift(nuevoPedido);
-      localStorage.setItem('cotizador_pedidos', JSON.stringify(pedidos));
-
-      alert(`¡Pedido ${codigo} procesado con éxito!`);
-      
-      document.getElementById('pedidoCliente').value = '';
-      document.getElementById('selectCotizacionBase').value = '';
-      document.getElementById('tcNumero').value = '';
-      document.getElementById('tcExpiracion').value = '';
-      document.getElementById('tcCvc').value = '';
+      alert(`Pedido ${cod} cobrado y registrado en Tesorería.`);
       itemsPedidoActual = [];
       renderTablaItemsActuales();
       generarCodigoPedido();
       renderTablaPedidos();
-      cargarListaPedidosFacturables();
     }
 
     function renderTablaPedidos() {
-      let pedidos = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
+      let peds = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
       const tbody = document.getElementById('tablaPedidos');
-      
-      if (!tbody) return;
-      if (pedidos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400">No hay pedidos registrados.</td></tr>';
-        return;
-      }
-
-      tbody.innerHTML = '';
-      pedidos.forEach(p => {
-        const resumenItems = (p.items || []).map(i => `${i.cantidad}x ${i.producto}`).join(', ');
-        const totalNum = Number(p.total) || 0;
-        const saldoNum = p.saldoPendiente !== undefined ? Number(p.saldoPendiente) : totalNum;
-        
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-50">
-            <td class="p-2 font-mono font-bold text-slate-800">${p.codigo}</td>
-            <td class="p-2">
-              <span class="font-semibold block">${p.cliente}</span>
-              <span class="text-[10px] text-slate-500 block truncate max-w-[180px]">${resumenItems}</span>
-            </td>
-            <td class="p-2 text-slate-600">${p.formaPago}</td>
-            <td class="p-2 text-right">
-              <span class="font-bold text-amber-600 block">$${saldoNum.toFixed(2)}</span>
-              <span class="text-[10px] text-slate-400 block">Total: $${totalNum.toFixed(2)}</span>
-            </td>
-          </tr>
-        `;
+      tbody.innerHTML = peds.length === 0 ? '<tr><td colspan="3" class="p-3 text-center text-slate-400">Sin pedidos.</td></tr>' : '';
+      peds.forEach(p => {
+        tbody.innerHTML += `<tr><td class="p-2 font-mono font-bold">${p.codigo}</td><td class="p-2">${p.cliente}</td><td class="p-2 text-right font-bold text-amber-600">$${Number(p.saldoPendiente).toFixed(2)}</td></tr>`;
       });
     }
 
-    function limpiarHistorialPedidos() {
-      if (confirm('¿Deseas reiniciar la lista de pedidos?')) {
-        localStorage.removeItem('cotizador_pedidos');
-        renderTablaPedidos();
-        cargarListaPedidosFacturables();
-      }
-    }
+    function limpiarHistorialPedidos() { localStorage.removeItem('cotizador_pedidos'); renderTablaPedidos(); }
 
-    // --- MÓDULO DE FACTURACIÓN ---
+    // --- MÓDULO 4: FACTURACIÓN ---
     function cargarListaPedidosFacturables() {
-      const contenedor = document.getElementById('listaPedidosFacturables');
-      if (!contenedor) return;
-      let pedidos = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
+      const cont = document.getElementById('listaPedidosFacturables');
+      let peds = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
+      const pends = peds.filter(p => Number(p.saldoPendiente) > 0);
 
-      const pedidosPendientes = pedidos.filter(p => {
-        const saldo = p.saldoPendiente !== undefined ? Number(p.saldoPendiente) : Number(p.total);
-        return saldo > 0.001;
+      cont.innerHTML = pends.length === 0 ? '<span class="text-xs text-slate-400 block text-center py-2">Sin pedidos pendientes.</span>' : '';
+      pends.forEach(p => {
+        cont.innerHTML += `<label class="flex items-center gap-2 text-xs p-1 hover:bg-slate-50 border-b cursor-pointer"><input type="checkbox" name="chkFacturaPedido" value="${p.codigo}" onchange="generarFacturaVisual()" class="rounded"><span class="font-bold">${p.codigo}</span> - ${p.cliente} (Saldo: $${Number(p.saldoPendiente).toFixed(2)})</label>`;
       });
-
-      if (pedidosPendientes.length === 0) {
-        contenedor.innerHTML = '<span class="text-xs text-slate-400 block text-center py-2">No hay pedidos pendientes por facturar.</span>';
-        generarFacturaVisual();
-        return;
-      }
-
-      contenedor.innerHTML = '';
-      pedidosPendientes.forEach(p => {
-        const saldoNum = p.saldoPendiente !== undefined ? Number(p.saldoPendiente) : Number(p.total);
-        contenedor.innerHTML += `
-          <div class="border-b last:border-b-0 pb-2 mb-2">
-            <label class="flex items-center gap-2 text-xs p-1 hover:bg-slate-50 rounded cursor-pointer">
-              <input type="checkbox" name="chkFacturaPedido" value="${p.codigo}" onchange="toggleMontoInput('${p.codigo}'); actualizarClienteAutoFactura();" class="rounded text-blue-600">
-              <span class="font-mono font-bold text-slate-800">${p.codigo}</span>
-              <span class="text-slate-600 truncate flex-1">${p.cliente}</span>
-              <span class="text-slate-500 text-[11px]">Saldo: <strong class="text-amber-600">$${saldoNum.toFixed(2)}</strong></span>
-            </label>
-            <div id="wrapperMonto_${p.codigo}" class="hidden mt-1 pl-6 flex items-center gap-2">
-              <span class="text-[11px] font-semibold text-slate-600">Monto a Facturar: $</span>
-              <input type="number" id="montoFactura_${p.codigo}" value="${saldoNum.toFixed(2)}" max="${saldoNum}" step="0.01" min="0.01" 
-                oninput="validarMontoPedido('${p.codigo}', ${saldoNum}); generarFacturaVisual();" 
-                class="w-32 border rounded p-1 text-xs font-bold text-blue-700">
-            </div>
-          </div>
-        `;
-      });
-      generarFacturaVisual();
-    }
-
-    function toggleMontoInput(codigo) {
-      const checkbox = document.querySelector(`input[name="chkFacturaPedido"][value="${codigo}"]`);
-      const wrapper = document.getElementById(`wrapperMonto_${codigo}`);
-      if (wrapper) {
-        if (checkbox && checkbox.checked) {
-          wrapper.classList.remove('hidden');
-        } else {
-          wrapper.classList.add('hidden');
-        }
-      }
-    }
-
-    function validarMontoPedido(codigo, maxSaldo) {
-      const input = document.getElementById(`montoFactura_${codigo}`);
-      if (!input) return;
-      let val = Number(input.value) || 0;
-      if (val > maxSaldo + 0.001) {
-        alert(`El monto a facturar no puede superar el saldo pendiente ($${maxSaldo.toFixed(2)}).`);
-        input.value = maxSaldo.toFixed(2);
-      }
-    }
-
-    function actualizarClienteAutoFactura() {
-      const checkboxes = document.querySelectorAll('input[name="chkFacturaPedido"]:checked');
-      if (checkboxes.length > 0) {
-        let pedidos = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
-        const primerCodigo = checkboxes[0].value;
-        const primerPedido = pedidos.find(p => p.codigo === primerCodigo);
-        if (primerPedido && !document.getElementById('facturaRazonSocial').value) {
-          document.getElementById('facturaRazonSocial').value = primerPedido.cliente;
-        }
-      }
-      generarFacturaVisual();
     }
 
     function generarFacturaVisual() {
-      const checkboxes = document.querySelectorAll('input[name="chkFacturaPedido"]:checked');
-      const codigosSeleccionados = Array.from(checkboxes).map(cb => cb.value);
-
-      if (codigosSeleccionados.length === 0) {
-        document.getElementById('facFolio').innerText = 'FOLIO: FAC-MULT-000';
-        document.getElementById('facPedidosIncluidos').innerText = 'Pedidos Incluidos: Ninguno';
-        document.getElementById('facReceptorNombre').innerText = 'SELECCIONA AL MENOS UN PEDIDO';
-        document.getElementById('facTablaConceptos').innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-400">Selecciona al menos un pedido para consolidar.</td></tr>';
-        document.getElementById('facSubtotal').innerText = '$0.00';
-        document.getElementById('facIva').innerText = '$0.00';
-        document.getElementById('facTotal').innerText = '$0.00';
-        return;
-      }
-
-      let pedidos = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
-      const pedidosElegidos = pedidos.filter(p => codigosSeleccionados.includes(p.codigo));
-
-      const rfc = document.getElementById('facturaRfc').value.trim() || 'XAXX010101000';
-      const razonSocial = document.getElementById('facturaRazonSocial').value.trim() || (pedidosElegidos[0] ? pedidosElegidos[0].cliente : 'CLIENTE');
-      const uso = document.getElementById('facturaUso').value;
-      const regimen = document.getElementById('facturaRegimen').value;
+      const chks = document.querySelectorAll('input[name="chkFacturaPedido"]:checked');
+      const cods = Array.from(chks).map(c => c.value);
+      let peds = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
+      const elegidos = peds.filter(p => cods.includes(p.codigo));
 
       document.getElementById('facFolio').innerText = `FOLIO: FAC-MULT-${Math.floor(100 + Math.random() * 900)}`;
       document.getElementById('facFecha').innerText = `Fecha: ${new Date().toLocaleDateString()}`;
-      document.getElementById('facPedidosIncluidos').innerText = `Pedidos Incluidos (${pedidosElegidos.length}): ${codigosSeleccionados.join(', ')}`;
-      document.getElementById('facReceptorNombre').innerText = razonSocial.toUpperCase();
-      document.getElementById('facReceptorRfc').innerText = `RFC: ${rfc.toUpperCase()}`;
-      document.getElementById('facReceptorUso').innerText = `Uso: ${uso}`;
-      document.getElementById('facReceptorRegimen').innerText = `Régimen: ${regimen}`;
+      document.getElementById('facReceptorNombre').innerText = document.getElementById('facturaRazonSocial').value.toUpperCase() || 'CLIENTE FISCAL';
+      document.getElementById('facReceptorRfc').innerText = `RFC: ${document.getElementById('facturaRfc').value.toUpperCase() || 'XAXX010101000'}`;
 
       const tbody = document.getElementById('facTablaConceptos');
       tbody.innerHTML = '';
-      let subtotalConsolidado = 0;
-
-      pedidosElegidos.forEach(p => {
-        const inputMonto = document.getElementById(`montoFactura_${p.codigo}`);
-        const montoIngresado = inputMonto ? (Number(inputMonto.value) || 0) : 0;
-
-        subtotalConsolidado += montoIngresado;
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-50">
-            <td class="p-2 font-mono text-[11px] text-blue-700 font-bold">${p.codigo}</td>
-            <td class="p-2 font-semibold">Abono / Facturación de pedido (${p.cliente})</td>
-            <td class="p-2 text-right font-bold">$${montoIngresado.toFixed(2)}</td>
-          </tr>
-        `;
+      let sub = 0;
+      elegidos.forEach(p => {
+        const monto = Number(p.saldoPendiente);
+        sub += monto;
+        tbody.innerHTML += `<tr><td class="p-2 font-mono font-bold">${p.codigo}</td><td class="p-2">Abono / Liquida Pedido ${p.cliente}</td><td class="p-2 text-right font-bold">$${monto.toFixed(2)}</td></tr>`;
       });
 
-      const iva = subtotalConsolidado * 0.16;
-      const totalFacturado = subtotalConsolidado + iva;
-
-      document.getElementById('facSubtotal').innerText = `$${subtotalConsolidado.toFixed(2)}`;
+      const iva = sub * 0.16;
+      document.getElementById('facSubtotal').innerText = `$${sub.toFixed(2)}`;
       document.getElementById('facIva').innerText = `$${iva.toFixed(2)}`;
-      document.getElementById('facTotal').innerText = `$${totalFacturado.toFixed(2)}`;
+      document.getElementById('facTotal').innerText = `$${(sub + iva).toFixed(2)}`;
     }
 
     function guardarYEmitirFactura() {
-      const checkboxes = document.querySelectorAll('input[name="chkFacturaPedido"]:checked');
-      const codigosSeleccionados = Array.from(checkboxes).map(cb => cb.value);
+      const chks = document.querySelectorAll('input[name="chkFacturaPedido"]:checked');
+      if (chks.length === 0) return alert('Selecciona al menos 1 pedido.');
 
-      if (codigosSeleccionados.length === 0) {
-        alert('Por favor, selecciona al menos un pedido para emitir la factura.');
-        return;
+      let peds = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
+      const cods = Array.from(chks).map(c => c.value);
+
+      peds = peds.map(p => cods.includes(p.codigo) ? { ...p, saldoPendiente: 0 } : p);
+      localStorage.setItem('cotizador_pedidos', JSON.stringify(peds));
+
+      alert('¡Factura Emitida con Éxito!');
+      cargarListaPedidosFacturables();
+      renderTablaPedidos();
+    }
+
+    function renderHistorialFacturasModule() {}
+
+    // --- MÓDULO 5: INSUMOS & CxP ---
+    function registrarEntradaEInsumoCxP() {
+      if (mesBloqueado) return alert('🔒 Periodo Bloqueado por Cierre de Mes.');
+      const prov = document.getElementById('cxpProveedor').value.trim();
+      const ins = document.getElementById('cxpInsumoNombre').value.trim();
+      const cant = Number(document.getElementById('cxpCantidad').value) || 0;
+      const pu = Number(document.getElementById('cxpCostoUnit').value) || 0;
+      if (!prov || !ins || cant <= 0 || pu <= 0) return alert('Llena todos los campos.');
+
+      const total = cant * pu;
+      const loteId = `LOTE-${Math.floor(1000 + Math.random() * 9000)}`;
+      const cxpId = `CXP-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      let kardex = JSON.parse(localStorage.getItem('cotizador_kardex_ueps')) || [];
+      kardex.push({ idLote: loteId, insumo: ins, cantidadDisponible: cant, costoUnitario: pu, timestamp: new Date().getTime() });
+      localStorage.setItem('cotizador_kardex_ueps', JSON.stringify(kardex));
+
+      let cxp = JSON.parse(localStorage.getItem('cotizador_cxp_proveedores')) || [];
+      cxp.unshift({ idCxp: cxpId, proveedor: prov, concepto: `${ins} (${cant} u.)`, montoTotal: total, saldoPendiente: total });
+      localStorage.setItem('cotizador_cxp_proveedores', JSON.stringify(cxp));
+
+      alert(`Entrada registrada a Kardex (${loteId}) y CxP Generada (${cxpId}).`);
+      cargarSelectorCxpPendientes();
+      renderKardexUEPS();
+    }
+
+    function cargarSelectorCxpPendientes() {
+      const select = document.getElementById('selectCxpPendiente');
+      if (!select) return;
+      select.innerHTML = '<option value="">-- Seleccionar CxP --</option>';
+      let cxp = JSON.parse(localStorage.getItem('cotizador_cxp_proveedores')) || [];
+      cxp.filter(c => Number(c.saldoPendiente) > 0).forEach(c => select.innerHTML += `<option value="${c.idCxp}">${c.idCxp} - ${c.proveedor} ($${Number(c.saldoPendiente).toFixed(2)})</option>`);
+    }
+
+    function seleccionarCxpParaVale() {
+      const id = document.getElementById('selectCxpPendiente').value;
+      let cxp = JSON.parse(localStorage.getItem('cotizador_cxp_proveedores')) || [];
+      const c = cxp.find(x => x.idCxp === id);
+      if (c) {
+        document.getElementById('valeMontoPago').value = Number(c.saldoPendiente).toFixed(2);
+        document.getElementById('valeConcepto').value = `Pago a ${c.proveedor} (${c.concepto})`;
       }
+    }
 
-      let pedidos = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
-      let subtotalConsolidado = 0;
-      let detalleMontosAplicados = {};
+    function generarValeSalida() {
+      if (mesBloqueado) return alert('🔒 Periodo Bloqueado por Cierre de Mes.');
+      const idCxp = document.getElementById('selectCxpPendiente').value;
+      const monto = Number(document.getElementById('valeMontoPago').value) || 0;
+      const concepto = document.getElementById('valeConcepto').value.trim();
+      if (!idCxp || monto <= 0 || !concepto) return alert('Datos incompletos.');
 
-      for (let cod of codigosSeleccionados) {
-        const inputMonto = document.getElementById(`montoFactura_${cod}`);
-        const monto = inputMonto ? Number(inputMonto.value) || 0 : 0;
-        
-        if (monto <= 0) {
-          alert(`El monto ingresado para el pedido ${cod} debe ser mayor a cero.`);
-          return;
-        }
+      let cxp = JSON.parse(localStorage.getItem('cotizador_cxp_proveedores')) || [];
+      const c = cxp.find(x => x.idCxp === idCxp);
 
-        const ped = pedidos.find(p => p.codigo === cod);
-        const saldoActual = ped.saldoPendiente !== undefined ? Number(ped.saldoPendiente) : Number(ped.total);
+      let vales = JSON.parse(localStorage.getItem('cotizador_vales_salida')) || [];
+      vales.unshift({ idVale: `VALE-${Math.floor(1000 + Math.random() * 9000)}`, idCxp: idCxp, proveedor: c.proveedor, concepto: concepto, monto: monto, estado: 'Pendiente' });
+      localStorage.setItem('cotizador_vales_salida', JSON.stringify(vales));
 
-        if (monto > saldoActual + 0.01) {
-          alert(`El monto para ${cod} ($${monto.toFixed(2)}) excede el saldo disponible ($${saldoActual.toFixed(2)}).`);
-          return;
-        }
+      alert('Vale de Salida emitido en espera de autorización.');
+      renderTablaVales();
+    }
 
-        detalleMontosAplicados[cod] = monto;
-        subtotalConsolidado += monto;
+    function autorizarVale(index) {
+      if (mesBloqueado) return alert('🔒 Periodo Bloqueado por Cierre de Mes.');
+      let vales = JSON.parse(localStorage.getItem('cotizador_vales_salida')) || [];
+      let cxp = JSON.parse(localStorage.getItem('cotizador_cxp_proveedores')) || [];
+      const vale = vales[index];
+
+      if (confirm(`¿Autorizar pago por $${vale.monto.toFixed(2)}?`)) {
+        vale.estado = 'Autorizado';
+        vales[index] = vale;
+        localStorage.setItem('cotizador_vales_salida', JSON.stringify(vales));
+
+        cxp = cxp.map(x => x.idCxp === vale.idCxp ? { ...x, saldoPendiente: Math.max(0, x.saldoPendiente - vale.monto) } : x);
+        localStorage.setItem('cotizador_cxp_proveedores', JSON.stringify(cxp));
+
+        let tes = JSON.parse(localStorage.getItem('cotizador_tesoreria')) || [];
+        tes.unshift({ id: `TES-${Math.floor(1000+Math.random()*9000)}`, tipo: 'Salida (Retiro Proveedor)', via: 'Bancaria', concepto: `Pago Proveedor ${vale.proveedor}`, monto: vale.monto, fecha: new Date().toLocaleDateString(), estado: 'Autorizado', conciliado: true });
+        localStorage.setItem('cotizador_tesoreria', JSON.stringify(tes));
+
+        alert('Vale Autorizado y registrado en Tesorería.');
+        cargarSelectorCxpPendientes();
+        renderTablaVales();
       }
+    }
 
-      pedidos = pedidos.map(p => {
-        if (detalleMontosAplicados[p.codigo] !== undefined) {
-          const saldoPrevio = p.saldoPendiente !== undefined ? Number(p.saldoPendiente) : Number(p.total);
-          const nuevoSaldo = Math.max(0, Number((saldoPrevio - detalleMontosAplicados[p.codigo]).toFixed(2)));
-          return { ...p, saldoPendiente: nuevoSaldo };
-        }
-        return p;
+    function renderKardexUEPS() {
+      const tbody = document.getElementById('tablaKardexUEPS');
+      let kardex = JSON.parse(localStorage.getItem('cotizador_kardex_ueps')) || [];
+      tbody.innerHTML = kardex.length === 0 ? '<tr><td colspan="4" class="p-3 text-center text-slate-400">Sin lotes.</td></tr>' : '';
+      kardex.forEach(l => {
+        tbody.innerHTML += `<tr><td class="p-2">${l.insumo}</td><td class="p-2 font-mono">${l.idLote}</td><td class="p-2 text-center font-bold">${l.cantidadDisponible}</td><td class="p-2 text-right">$${l.costoUnitario.toFixed(2)}</td></tr>`;
       });
+    }
 
-      localStorage.setItem('cotizador_pedidos', JSON.stringify(pedidos));
-
-      const rfc = document.getElementById('facturaRfc').value.trim() || 'XAXX010101000';
-      const razonSocial = document.getElementById('facturaRazonSocial').value.trim() || 'CLIENTE FISCAL';
+    function simularSalidaUEPS() {
+      if (mesBloqueado) return alert('🔒 Periodo Bloqueado.');
+      let kardex = JSON.parse(localStorage.getItem('cotizador_kardex_ueps')) || [];
+      if (kardex.length === 0) return alert('Sin existencias.');
       
-      const iva = subtotalConsolidado * 0.16;
-      const total = subtotalConsolidado + iva;
-      const folio = `FAC-MULT-${Math.floor(1000 + Math.random() * 9000)}`;
+      kardex.sort((a, b) => b.timestamp - a.timestamp);
+      const ins = prompt('Nombre del insumo a consumir:');
+      if (!ins) return;
 
-      const nuevaFactura = {
-        folio: folio,
-        fecha: new Date().toLocaleDateString(),
-        razonSocial: razonSocial,
-        rfc: rfc,
-        pedidos: codigosSeleccionados,
-        detalleMontos: detalleMontosAplicados,
-        subtotal: subtotalConsolidado,
-        iva: iva,
-        total: total
+      let lote = kardex.find(l => l.insumo.toLowerCase() === ins.trim().toLowerCase() && l.cantidadDisponible > 0);
+      if (!lote) return alert('Insumo no encontrado o agotado.');
+
+      let cant = Number(prompt(`Existencia: ${lote.cantidadDisponible}. ¿Cantidad a consumir?`)) || 0;
+      if (cant > 0 && cant <= lote.cantidadDisponible) {
+        lote.cantidadDisponible -= cant;
+        localStorage.setItem('cotizador_kardex_ueps', JSON.stringify(kardex));
+        alert('Salida por UEPS aplicada.');
+        renderKardexUEPS();
+      }
+    }
+
+    function renderTablaVales() {
+      let vales = JSON.parse(localStorage.getItem('cotizador_vales_salida')) || [];
+      const tbody = document.getElementById('tablaValesSalida');
+      tbody.innerHTML = vales.length === 0 ? '<tr><td colspan="5" class="p-3 text-center text-slate-400">Sin vales.</td></tr>' : '';
+      vales.forEach((v, idx) => {
+        tbody.innerHTML += `<tr><td class="p-2 font-bold">${v.idVale}</td><td class="p-2">${v.proveedor}</td><td class="p-2 text-right font-bold">$${v.monto.toFixed(2)}</td><td class="p-2 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${v.estado === 'Autorizado' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">${v.estado}</span></td><td class="p-2 text-center">${v.estado !== 'Autorizado' ? `<button onclick="autorizarVale(${idx})" class="bg-emerald-600 text-white px-2 py-1 rounded text-[10px] font-bold">Autorizar</button>` : '✔️'}</td></tr>`;
+      });
+    }
+
+    // --- MÓDULO 6: TESORERÍA & CONCILIACIÓN BANCARIA ---
+    function registrarMovimientoTesoreria() {
+      if (mesBloqueado) return alert('🔒 Periodo Bloqueado por Cierre de Mes.');
+      const tipo = document.getElementById('tesoreriaTipo').value;
+      const via = document.getElementById('tesoreriaVia').value;
+      const concepto = document.getElementById('tesoreriaConcepto').value.trim();
+      const monto = Number(document.getElementById('tesoreriaMonto').value) || 0;
+      const fecha = document.getElementById('tesoreriaFecha').value || new Date().toISOString().split('T')[0];
+
+      if (!concepto || monto <= 0) return alert('Ingresa concepto y monto válido.');
+
+      let tes = JSON.parse(localStorage.getItem('cotizador_tesoreria')) || [];
+      tes.unshift({ id: `TES-${Math.floor(1000 + Math.random() * 9000)}`, tipo, via, concepto, monto, fecha, estado: 'Autorizado', conciliado: false });
+      localStorage.setItem('cotizador_tesoreria', JSON.stringify(tes));
+
+      alert('Movimiento registrado en Tesorería.');
+      document.getElementById('tesoreriaConcepto').value = '';
+      document.getElementById('tesoreriaMonto').value = '';
+      renderTesoreria();
+    }
+
+    function procesarExcelBancario() {
+      const input = document.getElementById('archivoExcelBanco');
+      if (!input.files || !input.files[0]) return alert('Selecciona un archivo Excel (.xlsx / .csv).');
+
+      const file = input.files[0];
+      const reader = new FileReader();
+
+      reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const excelJson = XLSX.utils.sheet_to_json(firstSheet);
+
+        let tes = JSON.parse(localStorage.getItem('cotizador_tesoreria')) || [];
+        let conciliados = 0;
+
+        excelJson.forEach(row => {
+          const montoExcel = Number(row.Monto || row.MONTO || row.monto || 0);
+          if (montoExcel !== 0) {
+            const match = tes.find(t => !t.conciliado && Math.abs(t.monto - Math.abs(montoExcel)) < 0.01);
+            if (match) {
+              match.conciliado = true;
+              conciliados++;
+            }
+          }
+        });
+
+        localStorage.setItem('cotizador_tesoreria', JSON.stringify(tes));
+
+        document.getElementById('resumenConciliacion').classList.remove('hidden');
+        document.getElementById('txtTotalInternos').innerText = tes.length;
+        document.getElementById('txtTotalConciliados').innerText = conciliados;
+        document.getElementById('txtTotalPendientes').innerText = tes.length - conciliados;
+
+        alert(`Conciliación Finalizada: ${conciliados} movimientos coincidentes marcados.`);
+        renderTesoreria();
       };
 
-      let facturas = JSON.parse(localStorage.getItem('cotizador_facturas')) || [];
-      facturas.unshift(nuevaFactura);
-      localStorage.setItem('cotizador_facturas', JSON.stringify(facturas));
-
-      alert(`¡Factura ${folio} emitida con éxito por $${total.toFixed(2)}! Los saldos pendientes han sido actualizados.`);
-      
-      renderTablaPedidos();
-      cargarListaPedidosFacturables();
-      renderHistorialFacturasModule();
+      reader.readAsArrayBuffer(file);
     }
 
-    function renderHistorialFacturasModule() {
-      const contenedor = document.getElementById('historialFacturasLista');
-      if (!contenedor) return;
-      let facturas = JSON.parse(localStorage.getItem('cotizador_facturas')) || [];
+    function renderTesoreria() {
+      let tes = JSON.parse(localStorage.getItem('cotizador_tesoreria')) || [];
+      const tbodyBanco = document.getElementById('tablaBancarizado');
+      const tbodyEfectivo = document.getElementById('tablaEfectivo');
 
-      if (facturas.length === 0) {
-        contenedor.innerHTML = '<span class="text-xs text-slate-400 block text-center py-2">No hay facturas guardadas.</span>';
-        return;
-      }
+      if (!tbodyBanco || !tbodyEfectivo) return;
 
-      contenedor.innerHTML = '';
-      facturas.forEach((f, idx) => {
-        contenedor.innerHTML += `
-          <div class="border rounded p-2 bg-slate-50 space-y-1">
-            <div class="flex justify-between items-start">
-              <div>
-                <span class="font-mono font-bold text-blue-700 block">${f.folio}</span>
-                <span class="font-semibold text-slate-800 block">${f.razonSocial}</span>
-                <span class="text-[10px] text-slate-500 font-mono block">${f.rfc} | ${f.fecha}</span>
-              </div>
-              <button onclick="cancelarFactura(${idx})" class="text-[10px] font-bold text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 border border-red-200 px-2 py-0.5 rounded">
-                🗑️ Cancelar
-              </button>
-            </div>
-            <div class="flex justify-between items-center text-[11px] border-t pt-1 mt-1 text-slate-600">
-              <span class="truncate max-w-[150px]">Ped: ${(f.pedidos || []).join(', ')}</span>
-              <span class="font-bold text-emerald-600">$${Number(f.total).toFixed(2)}</span>
-            </div>
-          </div>
-        `;
+      tbodyBanco.innerHTML = '';
+      tbodyEfectivo.innerHTML = '';
+
+      const bancarios = tes.filter(t => t.via === 'Bancaria');
+      const efectivos = tes.filter(t => t.via === 'Efectivo');
+
+      if (bancarios.length === 0) tbodyBanco.innerHTML = '<tr><td colspan="4" class="p-3 text-center text-slate-400">Sin movimientos bancarios.</td></tr>';
+      bancarios.forEach(t => {
+        tbodyBanco.innerHTML += `<tr><td class="p-2">${t.fecha}</td><td class="p-2">${t.concepto}</td><td class="p-2 text-right font-bold ${t.tipo.includes('Entrada') || t.tipo.includes('+') ? 'text-emerald-600' : 'text-red-600'}">$${t.monto.toFixed(2)}</td><td class="p-2 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${t.conciliado ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">${t.conciliado ? 'Conciliado' : 'Pendiente'}</span></td></tr>`;
+      });
+
+      if (efectivos.length === 0) tbodyEfectivo.innerHTML = '<tr><td colspan="4" class="p-3 text-center text-slate-400">Sin movimientos en efectivo.</td></tr>';
+      efectivos.forEach(t => {
+        tbodyEfectivo.innerHTML += `<tr><td class="p-2">${t.fecha}</td><td class="p-2">${t.concepto}</td><td class="p-2 text-right font-bold ${t.tipo.includes('Entrada') || t.tipo.includes('+') ? 'text-emerald-600' : 'text-red-600'}">$${t.monto.toFixed(2)}</td><td class="p-2 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">Caja Chica</span></td></tr>`;
       });
     }
 
-    function cancelarFactura(index) {
-      let facturas = JSON.parse(localStorage.getItem('cotizador_facturas')) || [];
-      const factura = facturas[index];
-      if (!factura) return;
+    // --- MÓDULO 7: CONTABILIDAD & ACTIVOS FIJOS ---
+    function registrarActivoFijo() {
+      if (mesBloqueado) return alert('🔒 Periodo Bloqueado por Cierre de Mes.');
+      const nombre = document.getElementById('activoNombre').value.trim();
+      const cat = document.getElementById('activoCategoria').value;
+      const moi = Number(document.getElementById('activoMOI').value) || 0;
+      const fecha = document.getElementById('activoFecha').value;
+      const mesesUso = Number(document.getElementById('activoMesesUso').value) || 1;
 
-      if (confirm(`¿Estás seguro de cancelar la factura ${factura.folio}? El monto se reintegrará al saldo del pedido.`)) {
-        let pedidos = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
+      if (!nombre || moi <= 0) return alert('Ingresa un activo y monto válido.');
 
-        if (factura.detalleMontos) {
-          Object.keys(factura.detalleMontos).forEach(cod => {
-            const montoAEliminar = Number(factura.detalleMontos[cod]) || 0;
-            pedidos = pedidos.map(p => {
-              if (p.codigo === cod) {
-                const saldoActual = p.saldoPendiente !== undefined ? Number(p.saldoPendiente) : Number(p.total);
-                const saldoRestaurado = Math.min(Number(p.total), Number((saldoActual + montoAEliminar).toFixed(2)));
-                return { ...p, saldoPendiente: saldoRestaurado };
-              }
-              return p;
-            });
-          });
-        }
+      let pctAnual = 0.10;
+      if (cat.includes('30%')) pctAnual = 0.30;
+      else if (cat.includes('25%')) pctAnual = 0.25;
 
-        localStorage.setItem('cotizador_pedidos', JSON.stringify(pedidos));
-        facturas.splice(index, 1);
-        localStorage.setItem('cotizador_facturas', JSON.stringify(facturas));
+      const depMensual = (moi * pctAnual) / 12;
+      const depAcumulada = Math.min(moi, depMensual * mesesUso);
+      const valorLibros = Math.max(0, moi - depAcumulada);
 
-        alert(`Factura ${factura.folio} cancelada con éxito. Saldo reintegrado.`);
-        renderTablaPedidos();
-        cargarListaPedidosFacturables();
-        renderHistorialFacturasModule();
-      }
+      let activos = JSON.parse(localStorage.getItem('cotizador_activos_fijos')) || [];
+      activos.unshift({ id: `ACT-${Math.floor(1000 + Math.random() * 9000)}`, nombre, cat, moi, fecha, depMensual, depAcumulada, valorLibros });
+      localStorage.setItem('cotizador_activos_fijos', JSON.stringify(activos));
+
+      alert(`Activo "${nombre}" registrado con Depreciación Mensual de $${depMensual.toFixed(2)}.`);
+      document.getElementById('activoNombre').value = '';
+      document.getElementById('activoMOI').value = '';
+      renderContabilidad();
     }
 
-    function limpiarHistorialFacturas() {
-      if (confirm('¿Deseas reiniciar la lista de facturas? Esto NO repondrá los saldos de los pedidos.')) {
-        localStorage.removeItem('cotizador_facturas');
-        renderHistorialFacturasModule();
-      }
+    function renderContabilidad() {
+      let activos = JSON.parse(localStorage.getItem('cotizador_activos_fijos')) || [];
+      const tbodyActivos = document.getElementById('tablaActivosFijos');
+      const tbodyPolizas = document.getElementById('tablaPolizasContables');
+
+      if (!tbodyActivos || !tbodyPolizas) return;
+
+      tbodyActivos.innerHTML = activos.length === 0 ? '<tr><td colspan="7" class="p-3 text-center text-slate-400">Sin activos fijos registrados.</td></tr>' : '';
+      activos.forEach(a => {
+        tbodyActivos.innerHTML += `<tr><td class="p-2 font-mono font-bold">${a.id}</td><td class="p-2 font-semibold">${a.nombre}<span class="text-[10px] text-slate-400 block">${a.cat}</span></td><td class="p-2">${a.fecha}</td><td class="p-2 text-right font-bold">$${a.moi.toFixed(2)}</td><td class="p-2 text-right text-amber-600 font-bold">$${a.depMensual.toFixed(2)}</td><td class="p-2 text-right text-red-600 font-bold">$${a.depAcumulada.toFixed(2)}</td><td class="p-2 text-right text-emerald-600 font-bold">$${a.valorLibros.toFixed(2)}</td></tr>`;
+      });
+
+      let tes = JSON.parse(localStorage.getItem('cotizador_tesoreria')) || [];
+      tbodyPolizas.innerHTML = tes.length === 0 ? '<tr><td colspan="4" class="p-3 text-center text-slate-400">Sin pólizas.</td></tr>' : '';
+      tes.forEach(t => {
+        tbodyPolizas.innerHTML += `<tr><td class="p-2 font-mono">${t.id} - ${t.fecha}</td><td class="p-2">${t.concepto}</td><td class="p-2 text-right font-bold text-emerald-600">${t.tipo.includes('Entrada') ? `$${t.monto.toFixed(2)}` : '-'}</td><td class="p-2 text-right font-bold text-red-600">${t.tipo.includes('Salida') ? `$${t.monto.toFixed(2)}` : '-'}</td></tr>`;
+      });
     }
 
-    // --- MÓDULO DE REPORTES FINANCIEROS ---
+    // --- MÓDULO 8: NÓMINAS ---
+    function registrarEmpleadoYNomina() {
+      if (mesBloqueado) return alert('🔒 Periodo Bloqueado por Cierre de Mes.');
+      const nombre = document.getElementById('nomEmpleadoNombre').value.trim();
+      const puesto = document.getElementById('nomEmpleadoPuesto').value.trim();
+      const sd = Number(document.getElementById('nomSalarioDiario').value) || 0;
+      const dias = Number(document.getElementById('nomDiasTrabajados').value) || 15;
+      const he = Number(document.getElementById('nomHorasExtra').value) || 0;
+
+      if (!nombre || sd <= 0) return alert('Ingresa nombre y salario diario.');
+
+      const sueldoBase = sd * dias;
+      const percepciones = sueldoBase + he;
+      const imss = percepciones * 0.0275;
+      const isr = percepciones * 0.064;
+      const deducciones = imss + isr;
+      const neto = percepciones - deducciones;
+
+      let nominas = JSON.parse(localStorage.getItem('cotizador_nominas')) || [];
+      nominas.unshift({ id: `NOM-${Math.floor(1000 + Math.random() * 9000)}`, nombre, puesto, sueldoBase, percepciones, deducciones, neto });
+      localStorage.setItem('cotizador_nominas', JSON.stringify(nominas));
+
+      alert(`Recibo de nómina generado para ${nombre}. Neto a Pagar: $${neto.toFixed(2)}.`);
+      document.getElementById('nomEmpleadoNombre').value = '';
+      document.getElementById('nomSalarioDiario').value = '';
+      renderNominas();
+    }
+
+    function renderNominas() {
+      let nominas = JSON.parse(localStorage.getItem('cotizador_nominas')) || [];
+      const tbody = document.getElementById('tablaNominas');
+      if (!tbody) return;
+
+      tbody.innerHTML = nominas.length === 0 ? '<tr><td colspan="6" class="p-3 text-center text-slate-400">Sin recibos de nómina generados.</td></tr>' : '';
+      nominas.forEach(n => {
+        tbody.innerHTML += `<tr><td class="p-2 font-bold">${n.nombre}<span class="text-[10px] text-slate-400 block">${n.puesto}</span></td><td class="p-2 text-right">$${n.sueldoBase.toFixed(2)}</td><td class="p-2 text-right text-emerald-600 font-semibold">$${n.percepciones.toFixed(2)}</td><td class="p-2 text-right text-red-600 font-semibold">$${n.deducciones.toFixed(2)}</td><td class="p-2 text-right font-bold text-blue-700">$${n.neto.toFixed(2)}</td><td class="p-2 text-center"><button onclick="alert('Imprimiendo Recibo CFDI Nómina para ${n.nombre}')" class="bg-slate-800 text-white text-[10px] px-2 py-1 rounded">📄 Recibo</button></td></tr>`;
+      });
+    }
+
+    // --- MÓDULO 9: REPORTES ---
+    function cambiarSubtabReporte(subtab) {
+      const vProd = document.getElementById('vistaReporteProductos');
+      const vPed = document.getElementById('vistaReportePedidos');
+      const vFac = document.getElementById('vistaReporteFacturas');
+
+      vProd.classList.add('hidden'); vPed.classList.add('hidden'); vFac.classList.add('hidden');
+
+      if (subtab === 'productos') vProd.classList.remove('hidden');
+      else if (subtab === 'pedidos') vPed.classList.remove('hidden');
+      else if (subtab === 'facturas') vFac.classList.remove('hidden');
+      generarReportes();
+    }
+
     function generarReportes() {
       generarReporteProductos();
       generarReportePedidos();
@@ -1603,252 +1926,34 @@
     }
 
     function generarReporteProductos() {
-      let productos = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
-      const nombres = Object.keys(productos);
-
-      if (nombres.length === 0) {
-        document.getElementById('kpiTotalProductos').innerText = '0';
-        document.getElementById('kpiCostoProm').innerText = '$0.00';
-        document.getElementById('kpiPrecioProm').innerText = '$0.00';
-        document.getElementById('kpiMargenProm').innerText = '0%';
-        document.getElementById('tablaReporteProductosDetalle').innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400">No hay productos guardados.</td></tr>';
-        return;
-      }
-
-      let totalCostoUnit = 0, totalPrecioUnit = 0, totalMargenPct = 0;
-      let globalMP = 0, globalMOD = 0, globalEmpaque = 0, globalCIF = 0;
-      let chartLabels = [], chartCostos = [], chartPrecios = [], tablaHtml = '';
-
-      nombres.forEach(nombre => {
-        const prod = productos[nombre];
-        const arrInsumos = Array.isArray(prod.insumos) ? prod.insumos : [];
-        const costoMP = arrInsumos.reduce((s, i) => {
-          const cantidadVal = Number(i.cant !== undefined ? i.cant : i.cantidad) || 0;
-          return s + (cantidadVal * Number(i.costo || 0) * (1 + (Number(i.merma || 0) / 100)));
-        }, 0);
-
-        const costoMOD = Number(prod.horasTrabajo || 0) * Number(prod.costoHora || 0);
-        const costoTotal = costoMP + costoMOD + Number(prod.costoEmpaque || 0) + Number(prod.costoCIF || 0);
-        const loteU = Number(prod.loteUnidades) || 1;
-        const costoUnit = costoTotal / loteU;
-        
-        const mDeseado = Number(prod.margenDeseado) || 0;
-        const den = 1 - (mDeseado / 100);
-        const precioLote = den > 0 ? (costoTotal / den) : costoTotal;
-        const precioUnit = precioLote / loteU;
-        const gananciaLote = precioLote - costoTotal;
-
-        totalCostoUnit += costoUnit;
-        totalPrecioUnit += precioUnit;
-        totalMargenPct += mDeseado;
-
-        globalMP += costoMP; globalMOD += costoMOD; globalEmpaque += Number(prod.costoEmpaque || 0); globalCIF += Number(prod.costoCIF || 0);
-
-        chartLabels.push(nombre);
-        chartCostos.push(costoTotal.toFixed(2));
-        chartPrecios.push(precioLote.toFixed(2));
-
-        tablaHtml += `
-          <tr class="hover:bg-slate-50">
-            <td class="p-2 font-semibold text-slate-800">${nombre}</td>
-            <td class="p-2 text-center">${loteU} u.</td>
-            <td class="p-2 text-right">$${costoTotal.toFixed(2)}</td>
-            <td class="p-2 text-right">$${precioLote.toFixed(2)}</td>
-            <td class="p-2 text-right font-bold text-emerald-600">+$${gananciaLote.toFixed(2)}</td>
-            <td class="p-2 text-center"><span class="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded font-bold">${mDeseado}%</span></td>
-          </tr>
-        `;
+      let prods = JSON.parse(localStorage.getItem('cotizador_productos')) || {};
+      const nombres = Object.keys(prods);
+      document.getElementById('kpiTotalProductos').innerText = nombres.length;
+      let html = '';
+      nombres.forEach(n => {
+        const p = prods[n];
+        const costoLote = calcularPrecioLoteProducto(n) * 0.7;
+        const precioLote = calcularPrecioLoteProducto(n);
+        html += `<tr><td class="p-2 font-semibold">${n}</td><td class="p-2 text-center">${p.loteUnidades}</td><td class="p-2 text-right">$${costoLote.toFixed(2)}</td><td class="p-2 text-right">$${precioLote.toFixed(2)}</td><td class="p-2 text-right font-bold text-emerald-600">+$${(precioLote - costoLote).toFixed(2)}</td><td class="p-2 text-center">${p.margenDeseado}%</td></tr>`;
       });
-
-      const count = nombres.length;
-      document.getElementById('kpiTotalProductos').innerText = count;
-      document.getElementById('kpiCostoProm').innerText = `$${(totalCostoUnit / count).toFixed(2)}`;
-      document.getElementById('kpiPrecioProm').innerText = `$${(totalPrecioUnit / count).toFixed(2)}`;
-      document.getElementById('kpiMargenProm').innerText = `${(totalMargenPct / count).toFixed(1)}%`;
-      document.getElementById('tablaReporteProductosDetalle').innerHTML = tablaHtml;
-
-      renderGráficosProductos(chartLabels, chartCostos, chartPrecios, [globalMP, globalMOD, globalEmpaque, globalCIF]);
+      document.getElementById('tablaReporteProductosDetalle').innerHTML = html || '<tr><td colspan="6" class="p-3 text-center text-slate-400">Sin productos.</td></tr>';
     }
 
     function generarReportePedidos() {
-      let pedidos = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
-
-      if (pedidos.length === 0) {
-        document.getElementById('kpiTotalPedidosCount').innerText = '0';
-        document.getElementById('kpiTotalVentasCobrada').innerText = '$0.00';
-        document.getElementById('kpiVentasTC').innerText = '$0.00';
-        document.getElementById('kpiComisionesTC').innerText = '$0.00';
-        document.getElementById('tablaReportePedidosDetalle').innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400">No hay pedidos registrados.</td></tr>';
-        return;
-      }
-
-      let totalVentas = 0, totalTC = 0, totalComisiones = 0, totalEfectivo = 0;
-      let chartPedLabels = [], chartPedTotales = [];
-      let tablaHtml = '';
-
-      pedidos.forEach(p => {
-        const subtotalNum = Number(p.subtotal) || 0;
-        const comisionNum = Number(p.comision) || 0;
-        const totalNum = Number(p.total) || 0;
-
-        totalVentas += totalNum;
-        if (p.formaPago === 'Tarjeta de Crédito') {
-          totalTC += totalNum;
-          totalComisiones += comisionNum;
-        } else {
-          totalEfectivo += totalNum;
-        }
-
-        chartPedLabels.push(p.codigo);
-        chartPedTotales.push(totalNum.toFixed(2));
-
-        tablaHtml += `
-          <tr class="hover:bg-slate-50">
-            <td class="p-2 font-mono font-bold text-slate-800">${p.fecha || '-'} - ${p.codigo}</td>
-            <td class="p-2 font-semibold">${p.cliente}</td>
-            <td class="p-2 text-slate-600">${p.formaPago}</td>
-            <td class="p-2 text-right">$${subtotalNum.toFixed(2)}</td>
-            <td class="p-2 text-right text-purple-600 font-semibold">$${comisionNum.toFixed(2)}</td>
-            <td class="p-2 text-right font-bold text-emerald-600">$${totalNum.toFixed(2)}</td>
-          </tr>
-        `;
+      let peds = JSON.parse(localStorage.getItem('cotizador_pedidos')) || [];
+      document.getElementById('kpiTotalPedidosCount').innerText = peds.length;
+      let tot = peds.reduce((s, p) => s + Number(p.total), 0);
+      document.getElementById('kpiTotalVentasCobrada').innerText = `$${tot.toFixed(2)}`;
+      let html = '';
+      peds.forEach(p => {
+        html += `<tr><td class="p-2 font-mono font-bold">${p.codigo}</td><td class="p-2">${p.cliente}</td><td class="p-2">${p.formaPago}</td><td class="p-2 text-right">$${Number(p.total * 0.965).toFixed(2)}</td><td class="p-2 text-right">$${Number(p.total * 0.035).toFixed(2)}</td><td class="p-2 text-right font-bold text-emerald-600">$${Number(p.total).toFixed(2)}</td></tr>`;
       });
-
-      document.getElementById('kpiTotalPedidosCount').innerText = pedidos.length;
-      document.getElementById('kpiTotalVentasCobrada').innerText = `$${totalVentas.toFixed(2)}`;
-      document.getElementById('kpiVentasTC').innerText = `$${totalTC.toFixed(2)}`;
-      document.getElementById('kpiComisionesTC').innerText = `$${totalComisiones.toFixed(2)}`;
-      document.getElementById('tablaReportePedidosDetalle').innerHTML = tablaHtml;
-
-      renderGráficosPedidos(chartPedLabels, chartPedTotales, [totalTC, totalEfectivo]);
+      document.getElementById('tablaReportePedidosDetalle').innerHTML = html || '<tr><td colspan="6" class="p-3 text-center text-slate-400">Sin pedidos.</td></tr>';
     }
 
     function generarReporteFacturas() {
-      let facturas = JSON.parse(localStorage.getItem('cotizador_facturas')) || [];
-
-      if (facturas.length === 0) {
-        document.getElementById('kpiTotalFacturasCount').innerText = '0';
-        document.getElementById('kpiSubtotalFacturado').innerText = '$0.00';
-        document.getElementById('kpiIvaFacturado').innerText = '$0.00';
-        document.getElementById('kpiTotalFacturado').innerText = '$0.00';
-        document.getElementById('tablaReporteFacturasDetalle').innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400">No hay facturas emitidas.</td></tr>';
-        return;
-      }
-
-      let totalSubtotal = 0, totalIva = 0, totalFacturadoGlobal = 0;
-      let chartFacLabels = [], chartFacTotales = [];
-      let tablaHtml = '';
-
-      facturas.forEach(f => {
-        const sub = Number(f.subtotal) || 0;
-        const ivaVal = Number(f.iva) || 0;
-        const tot = Number(f.total) || 0;
-
-        totalSubtotal += sub;
-        totalIva += ivaVal;
-        totalFacturadoGlobal += tot;
-
-        chartFacLabels.push(f.folio);
-        chartFacTotales.push(tot.toFixed(2));
-
-        tablaHtml += `
-          <tr class="hover:bg-slate-50">
-            <td class="p-2 font-mono font-bold text-slate-800">${f.folio} <span class="text-slate-400 block font-normal text-[10px]">${f.fecha}</span></td>
-            <td class="p-2 font-semibold text-slate-800">${f.razonSocial} <span class="text-slate-500 block font-mono text-[10px]">${f.rfc}</span></td>
-            <td class="p-2 font-mono text-xs text-blue-700">${(f.pedidos || []).join(', ')}</td>
-            <td class="p-2 text-right">$${sub.toFixed(2)}</td>
-            <td class="p-2 text-right text-purple-600 font-semibold">$${ivaVal.toFixed(2)}</td>
-            <td class="p-2 text-right font-bold text-emerald-600">$${tot.toFixed(2)}</td>
-          </tr>
-        `;
-      });
-
-      document.getElementById('kpiTotalFacturasCount').innerText = facturas.length;
-      document.getElementById('kpiSubtotalFacturado').innerText = `$${totalSubtotal.toFixed(2)}`;
-      document.getElementById('kpiIvaFacturado').innerText = `$${totalIva.toFixed(2)}`;
-      document.getElementById('kpiTotalFacturado').innerText = `$${totalFacturadoGlobal.toFixed(2)}`;
-      document.getElementById('tablaReporteFacturasDetalle').innerHTML = tablaHtml;
-
-      renderGráficosFacturas(chartFacLabels, chartFacTotales, [totalSubtotal, totalIva]);
-    }
-
-    // --- RENDERIZADO DE GRÁFICOS CHART.JS ---
-    function renderGráficosProductos(labels, costos, precios, estructuraCostos) {
-      if (chartBarInstance) chartBarInstance.destroy();
-      if (chartPieInstance) chartPieInstance.destroy();
-
-      const ctxBar = document.getElementById('chartComparativo').getContext('2d');
-      chartBarInstance = new Chart(ctxBar, {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [
-            { label: 'Costo Lote ($)', data: costos, backgroundColor: '#cbd5e1' },
-            { label: 'Precio Venta ($)', data: precios, backgroundColor: '#10b981' }
-          ]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
-
-      const ctxPie = document.getElementById('chartEstructuraCostos').getContext('2d');
-      chartPieInstance = new Chart(ctxPie, {
-        type: 'doughnut',
-        data: {
-          labels: ['Materia Prima', 'Mano de Obra', 'Empaque', 'CIF'],
-          datasets: [{ data: estructuraCostos, backgroundColor: ['#3b82f6', '#f59e0b', '#ec4899', '#64748b'] }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
-    }
-
-    function renderGráficosPedidos(pedLabels, pedTotales, metodosData) {
-      if (chartMetodosInstance) chartMetodosInstance.destroy();
-      if (chartVentasPedInstance) chartVentasPedInstance.destroy();
-
-      const ctxMet = document.getElementById('chartMetodosPago').getContext('2d');
-      chartMetodosInstance = new Chart(ctxMet, {
-        type: 'doughnut',
-        data: {
-          labels: ['Tarjeta de Crédito', 'Efectivo / Transf.'],
-          datasets: [{ data: metodosData, backgroundColor: ['#3b82f6', '#10b981'] }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
-
-      const ctxVentas = document.getElementById('chartVentasPorPedido').getContext('2d');
-      chartVentasPedInstance = new Chart(ctxVentas, {
-        type: 'bar',
-        data: {
-          labels: pedLabels,
-          datasets: [{ label: 'Cobro Total ($)', data: pedTotales, backgroundColor: '#8b5cf6' }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
-    }
-
-    function renderGráficosFacturas(facLabels, facTotales, estructuraData) {
-      if (chartEstructuraFacInstance) chartEstructuraFacInstance.destroy();
-      if (chartMontosFacInstance) chartMontosFacInstance.destroy();
-
-      const ctxEst = document.getElementById('chartEstructuraFacturas').getContext('2d');
-      chartEstructuraFacInstance = new Chart(ctxEst, {
-        type: 'doughnut',
-        data: {
-          labels: ['Subtotal Base', 'IVA Recaudado (16%)'],
-          datasets: [{ data: estructuraData, backgroundColor: ['#3b82f6', '#a855f7'] }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
-
-      const ctxMontos = document.getElementById('chartMontosFacturas').getContext('2d');
-      chartMontosFacInstance = new Chart(ctxMontos, {
-        type: 'bar',
-        data: {
-          labels: facLabels,
-          datasets: [{ label: 'Total Facturado ($)', data: facTotales, backgroundColor: '#10b981' }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
+      document.getElementById('kpiTotalFacturasCount').innerText = '0';
+      document.getElementById('tablaReporteFacturasDetalle').innerHTML = '<tr><td colspan="6" class="p-3 text-center text-slate-400">Sin facturas registradas.</td></tr>';
     }
   </script>
 </body>
